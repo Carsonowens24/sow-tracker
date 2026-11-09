@@ -42,7 +42,7 @@ Open it once while you have a signal. After that it opens in the barn with none.
 
 ## Getting updates
 
-When the app is updated, close it fully (swipe it away) and open it twice while you have a signal. The first open downloads the update and the second one shows it. The version number at the bottom of the main screen tells you which one you have.
+When the app is updated, close it fully (swipe it away) and open it again while you are connected to the internet. The version number at the bottom of the main screen tells you which one you have.
 
 ## Good to know
 
