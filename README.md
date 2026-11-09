@@ -2,7 +2,7 @@
 
 A phone app for logging sow breedings on a hog operation. It is a web page you add to your home screen, so there is nothing to install from an app store. Your records are saved on the phone itself and the app opens with no signal.
 
-## What works so far (steps 1 to 4)
+## What it does
 
 - **Log a breeding by voice.** Tap the big microphone and say something like:
   - "Sow 118 was bred to Hang Time on July 26th"
@@ -26,12 +26,14 @@ A phone app for logging sow breedings on a hog operation. It is a web page you a
 - **Coming in tab.** Sows due back in heat in the next 3 weeks (so a sow shows up the day she is bred, marked "Bred to" and the boar's name) and sows due to farrow in the next 2 weeks, soonest first. Overdue ones stay on the list for a week. A bred sow drops off the "due back" list once she is a week past her date with no new heat logged.
 - **Yellow bar.** When you open the app, a yellow bar at the top tells you how many sows are due now or by tomorrow. Tap it to see them. The app cannot send notifications while it is closed.
 - **Edit from the list.** Tap any breeding or heat record in the main list, then choose **Edit** or **See her history**.
+- **Export spreadsheet (CSV).** At the bottom of the main screen. Makes a file with every breeding and heat record that opens in Excel, Numbers or Google Sheets. On an iPhone the Share sheet opens: choose **Save to Files** or **Mail** to send it to yourself.
+- **Restore from a spreadsheet.** Pick a file you exported earlier and the app adds back any entries that are missing. It never deletes anything, so it is safe to run twice.
+- **Calendar reminders.** Makes a calendar file with each sow's expected return to heat and farrowing date, with an alert at 6 AM that day. Once the events are in your iPhone Calendar, the phone reminds you even when the app is closed. If a sow's dates change later, the old calendar events stay until you delete them in Calendar.
 - **Sow history.** Each sow has her own page, with every breeding and heat record she has and buttons to log another one for her.
 - **Edit or delete.** On the sow's page, tap an entry to change or delete it.
 
 Sows can be a number (118), a name (Rosie) or an ear notch (12-4).
 
-Still to come: CSV export and backup.
 
 ## Putting it on your iPhone
 
@@ -60,7 +62,7 @@ When the app is updated, close it fully (swipe it away) and open it again while 
 ## Good to know
 
 - **Voice and signal.** The big microphone button may need a signal to work. If it does not respond, use the text box and the keyboard's microphone key.
-- **Your records live only on this phone.** They are not sent anywhere. Deleting the home screen icon or clearing Safari's website data erases them. CSV backup is coming in a later step.
+- **Your records live only on this phone.** They are not sent anywhere. Deleting the home screen icon or clearing Safari's website data erases them, so export the spreadsheet regularly and keep the file somewhere off the phone (email it to yourself). The app shows when you last exported.
 - **Public repository.** Only the app's code is public. Your breeding records never leave your phone.
 
 ## Files

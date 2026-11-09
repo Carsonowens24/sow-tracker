@@ -183,6 +183,9 @@ input[type="text"], input[type="search"], input[type="date"], input[type="time"]
 .dates b { text-align: right; font-variant-numeric: tabular-nums; }
 .dates small { display: block; font-weight: 400; color: var(--muted); font-size: 15px; }
 .hint { margin: -10px 0 0; color: var(--muted); font-size: 16px; }
+.tools { display: flex; flex-direction: column; gap: 10px; margin-top: 14px; padding-top: 18px; border-top: 2px solid var(--line); }
+.tools .hint { margin: 0 0 6px; }
+.tools a { color: var(--go); font-weight: 700; }
 .version { text-align: center; color: var(--muted); font-size: 14px; margin: 0; }
 .empty {
   border: 2px dashed var(--line);
@@ -293,7 +296,19 @@ input[type="text"], input[type="search"], input[type="date"], input[type="time"]
     <p class="none" id="dueFarrowNone">No sows due to farrow in the next 2 weeks.</p>
   </div>
   <div class="empty" id="nomatch" hidden><p>Nothing matches that search.</p></div>
-  <p class="version">Version 4.1</p>
+  <section class="tools" aria-label="Backup and reminders">
+    <h2>Backup</h2>
+    <button type="button" class="btn wide" id="exportBtn">Export spreadsheet (CSV)</button>
+    <p class="hint" id="lastBackup"></p>
+    <button type="button" class="btn wide" id="restoreBtn">Restore from a spreadsheet</button>
+    <input type="file" id="restoreFile" accept=".csv,text/csv,text/comma-separated-values" hidden>
+    <p class="hint">Restore adds any entries from an exported file that are not already here. It never deletes anything.</p>
+    <h2>Reminders</h2>
+    <button type="button" class="btn wide" id="calBtn">Add reminders to Calendar</button>
+    <p class="hint">Makes a calendar file with each sow's expected return to heat and farrowing date, with an alert at 6 AM that day.</p>
+    <p class="hint" id="fileLink" hidden></p>
+  </section>
+  <p class="version">Version 5</p>
 </div>
 
 <div class="wrap" id="sowView" hidden>
@@ -1092,12 +1107,193 @@ input[type="text"], input[type="search"], input[type="date"], input[type="time"]
     }
   });
 
+  /* ---------- Backup: spreadsheet export and restore ---------- */
+  var CSV_HEAD = ['Type', 'Sow', 'Date', 'Time', 'Boar', 'Heat stage', 'Next heat expected', 'Expected farrowing'];
+  function csvCell(v) {
+    v = String(v == null ? '' : v);
+    return /[",\r\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
+  }
+  function buildCSV() {
+    var rows = sorted(everything()).map(function (r) {
+      var heat = isHeat(r);
+      return [
+        heat ? 'Heat' : 'Breeding', r.sow, r.date, heat ? niceTime(r) : '',
+        heat ? '' : r.boar, heat ? STAGES[r.type] : '',
+        heat && r.type !== 'standing' ? '' : plusDays(r.date, HEAT_DAYS),
+        heat ? '' : plusDays(r.date, FARROW_DAYS)
+      ];
+    });
+    return '\uFEFF' + [CSV_HEAD].concat(rows).map(function (r) { return r.map(csvCell).join(','); }).join('\r\n') + '\r\n';
+  }
+  function parseCSV(text) {
+    var rows = [], row = [], cell = '', q = false, i, c;
+    text = text.replace(/^\uFEFF/, '');
+    for (i = 0; i < text.length; i++) {
+      c = text[i];
+      if (q) {
+        if (c === '"') { if (text[i + 1] === '"') { cell += '"'; i++; } else q = false; }
+        else cell += c;
+      } else if (c === '"') q = true;
+      else if (c === ',') { row.push(cell); cell = ''; }
+      else if (c === '\n' || c === '\r') {
+        if (c === '\r' && text[i + 1] === '\n') i++;
+        row.push(cell); cell = ''; rows.push(row); row = [];
+      } else cell += c;
+    }
+    if (cell !== '' || row.length) { row.push(cell); rows.push(row); }
+    return rows.filter(function (r) { return r.join('').trim() !== ''; });
+  }
+  // Dates may come back from a spreadsheet program as 11/9/2026 instead of 2026-11-09.
+  function readDate(v) {
+    v = String(v).trim();
+    var m = /^(\d{4})-(\d{1,2})-(\d{1,2})/.exec(v);
+    if (m) return m[1] + '-' + pad(+m[2]) + '-' + pad(+m[3]);
+    m = /^(\d{1,2})\/(\d{1,2})\/(\d{2,4})/.exec(v);
+    if (m) return (m[3].length === 2 ? '20' + m[3] : m[3]) + '-' + pad(+m[1]) + '-' + pad(+m[2]);
+    return '';
+  }
+  function readTime(v) {
+    v = String(v).trim();
+    var m = /^(morning|afternoon|evening)$/i.exec(v);
+    if (m) return { time: '', part: m[1].toLowerCase() };
+    m = /^(\d{1,2}):(\d{2})(?::\d{2})?\s*(am|pm)?$/i.exec(v);
+    if (!m) return { time: '', part: '' };
+    var h = +m[1];
+    if (m[3]) h = (h % 12) + (/p/i.test(m[3]) ? 12 : 0);
+    return { time: pad(h) + ':' + m[2], part: '' };
+  }
+  function sameEntry(a, b) {
+    return isHeat(a) === isHeat(b) && key(a.sow) === key(b.sow) && a.date === b.date &&
+      (isHeat(a) ? a.type === b.type && clock(a) === clock(b) : key(a.boar) === key(b.boar));
+  }
+  function importCSV(text) {
+    var rows = parseCSV(text);
+    if (!rows.length) return { added: 0, skipped: 0, bad: 0, ok: false };
+    var head = rows[0].map(function (h) { return key(h); });
+    var col = {};
+    CSV_HEAD.forEach(function (h) { col[h] = head.indexOf(key(h)); });
+    if (col.Type < 0 || col.Sow < 0 || col.Date < 0) return { added: 0, skipped: 0, bad: 0, ok: false };
+    function get(r, h) { return col[h] >= 0 && r[col[h]] != null ? String(r[col[h]]).trim() : ''; }
+    var added = 0, skipped = 0, bad = 0, stamp = Date.now();
+    rows.slice(1).forEach(function (r) {
+      var sow = tidy(get(r, 'Sow')), date = readDate(get(r, 'Date')), type = key(get(r, 'Type')), rec;
+      if (!sow || !date) { bad++; return; }
+      if (type === 'heat') {
+        var st = key(get(r, 'Heat stage')), code = '';
+        Object.keys(STAGES).forEach(function (k) { if (key(STAGES[k]) === st) code = k; });
+        if (!code) { bad++; return; }
+        var t = readTime(get(r, 'Time'));
+        rec = { sow: sow, type: code, date: date, time: t.time, part: t.part };
+      } else if (type === 'breeding') {
+        rec = { sow: sow, boar: tidy(get(r, 'Boar')), date: date };
+      } else { bad++; return; }
+      if (everything().some(function (o) { return sameEntry(o, rec); })) { skipped++; return; }
+      rec.id = newId(); rec.created = stamp++;
+      (isHeat(rec) ? data.heats : data.breedings).push(rec);
+      added++;
+    });
+    return { added: added, skipped: skipped, bad: bad, ok: true };
+  }
+
+  /* ---------- Reminders: a calendar file the phone's Calendar can import ---------- */
+  function icsText(v) { return String(v).replace(/\\/g, '\\\\').replace(/;/g, '\;').replace(/,/g, '\\,').replace(/\n/g, '\\n'); }
+  function icsDate(iso) { return iso.replace(/-/g, ''); }
+  function buildICS() {
+    var now = new Date();
+    var stampUTC = now.toISOString().replace(/[-:]/g, '').replace(/\.\d+/, '');
+    var lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Sow Tracker//EN', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH'];
+    var count = 0;
+    function add(kind, o, iso, title, note) {
+      if (daysUntil(iso) < 0) return;
+      count++;
+      lines.push('BEGIN:VEVENT',
+        'UID:' + kind + '-' + encodeURIComponent(key(o.sow)) + '-' + icsDate(iso) + '@sow-tracker',
+        'DTSTAMP:' + stampUTC,
+        'DTSTART;VALUE=DATE:' + icsDate(iso),
+        'DTEND;VALUE=DATE:' + icsDate(plusDays(iso, 1)),
+        'SUMMARY:' + icsText(title),
+        'DESCRIPTION:' + icsText(note),
+        'TRANSP:TRANSPARENT',
+        'BEGIN:VALARM', 'ACTION:DISPLAY', 'DESCRIPTION:' + icsText(title), 'TRIGGER:PT6H', 'END:VALARM',
+        'END:VEVENT');
+    }
+    outlook().forEach(function (o) {
+      var bredNote = o.bred ? 'Bred ' + niceDate(o.bred.date) + ' to ' + o.bred.boar + '.' : 'Not bred. Last heat ' + niceDate(o.lastHeat) + '.';
+      add('heat', o, o.nextHeat, o.sow + ' due back in heat' + (o.bred ? ' (bred to ' + o.bred.boar + ')' : ''), bredNote + ' 21 days after her last heat.');
+      if (o.farrow) add('farrow', o, o.farrow, o.sow + ' due to farrow', bredNote + ' 114 days after breeding.');
+    });
+    lines.push('END:VCALENDAR');
+    return { text: lines.join('\r\n') + '\r\n', count: count };
+  }
+
+  /* ---------- Handing a file to the phone ---------- */
+  // iPhone home-screen apps cannot download directly, so use the Share sheet when there is one.
+  function giveFile(name, type, text, done) {
+    var file = null;
+    try { file = new File([text], name, { type: type }); } catch (e) {}
+    var link = $('fileLink');
+    function fallback() {
+      var url = URL.createObjectURL(new Blob([text], { type: type }));
+      var a = document.createElement('a');
+      a.href = url; a.download = name; a.textContent = 'Tap here to get ' + name;
+      link.textContent = 'If nothing happened: ';
+      link.appendChild(a);
+      link.hidden = false;
+      try { a.click(); } catch (e) {}
+      done(true);
+    }
+    if (file && navigator.canShare && navigator.canShare({ files: [file] })) {
+      navigator.share({ files: [file], title: name }).then(function () { done(true); }, function (err) {
+        if (err && err.name === 'AbortError') done(false); else fallback();
+      });
+    } else fallback();
+  }
+
+  function showLastBackup() {
+    var t = null;
+    try { t = localStorage.getItem(KEY + '.backup'); } catch (e) {}
+    var n = everything().length;
+    $('lastBackup').textContent = !n ? 'Nothing to back up yet.'
+      : t ? 'Last exported ' + agoText(t).toLowerCase() + '. Send the file to yourself by email or save it to Files.'
+      : 'Not backed up yet. Your records are only on this phone until you export them.';
+  }
+  $('exportBtn').addEventListener('click', function () {
+    if (!everything().length) { toast('Nothing to export yet'); return; }
+    var today = toISO(new Date());
+    giveFile('sow-tracker-' + today + '.csv', 'text/csv', buildCSV(), function (ok) {
+      if (!ok) return;
+      try { localStorage.setItem(KEY + '.backup', today); } catch (e) {}
+      showLastBackup();
+    });
+  });
+  $('restoreBtn').addEventListener('click', function () { $('restoreFile').click(); });
+  $('restoreFile').addEventListener('change', function () {
+    var f = $('restoreFile').files && $('restoreFile').files[0];
+    if (!f) return;
+    var reader = new FileReader();
+    reader.onload = function () {
+      var r = importCSV(String(reader.result || ''));
+      $('restoreFile').value = '';
+      if (!r.ok) { toast('That is not a Sow Tracker spreadsheet'); return; }
+      save(); render(); showLastBackup();
+      toast('Added ' + plural(r.added, 'entry').replace('entrys', 'entries') + ', ' + r.skipped + ' already here' + (r.bad ? ', ' + r.bad + ' could not be read' : ''));
+    };
+    reader.onerror = function () { toast('Could not read that file'); };
+    reader.readAsText(f);
+  });
+  $('calBtn').addEventListener('click', function () {
+    var ics = buildICS();
+    if (!ics.count) { toast('No upcoming dates to remind you about'); return; }
+    giveFile('sow-tracker-reminders.ics', 'text/calendar', ics.text, function () {});
+  });
+
   /* ---------- Start ---------- */
   load();
   setStatus(HINT);
   render();
+  showLastBackup();
   if (!storageOK) toast('This browser is not saving data. Turn off Private Browsing.');
-  window.__sow = { parseEntry: parseEntry };   // used by the automated checks
+  window.__sow = { parseEntry: parseEntry, buildCSV: buildCSV, buildICS: buildICS, importCSV: importCSV };   // used by the automated checks
 
   try {
     if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
