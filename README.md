@@ -2,7 +2,7 @@
 
 A phone app for logging sow breedings on a hog operation. It is a web page you add to your home screen, so there is nothing to install from an app store. Your records are saved on the phone itself and the app opens with no signal.
 
-## What works so far (steps 1 to 3)
+## What works so far (steps 1 to 4)
 
 - **Log a breeding by voice.** Tap the big microphone and say something like:
   - "Sow 118 was bred to Hang Time on July 26th"
@@ -20,12 +20,17 @@ A phone app for logging sow breedings on a hog operation. It is a web page you a
   - You can add a time ("at 6:30 am") or just say morning, afternoon or evening. Time is optional.
   - Or tap **Add heat** to fill it in by hand.
 - **Breedings and Heat tabs.** The main list switches between the two. "Find a sow" filters whichever one is showing.
+- **Helpful dates.** Worked out for you on each sow's page:
+  - Next heat: 21 days after her last heat (first standing if you logged it, otherwise her first breeding or heat signs).
+  - Due to farrow: 114 days after the first breeding of her latest heat.
+- **Coming in tab.** Sows due back in heat or due to farrow in the next 2 weeks, soonest first. Overdue ones stay on the list for a week. A bred sow drops off the "due back" list once she is a week past her date with no new heat logged.
+- **Yellow bar.** When you open the app, a yellow bar at the top tells you how many sows are due now or by tomorrow. Tap it to see them. The app cannot send notifications while it is closed.
 - **Sow history.** Tap any entry in a list to open that sow's page, with every breeding and heat record she has and buttons to log another one for her.
 - **Edit or delete.** On the sow's page, tap an entry to change or delete it.
 
 Sows can be a number (118), a name (Rosie) or an ear notch (12-4).
 
-Still to come: next-heat and farrowing dates, the "coming up" screen, and CSV export.
+Still to come: CSV export and backup.
 
 ## Putting it on your iPhone
 

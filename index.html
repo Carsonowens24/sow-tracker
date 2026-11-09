@@ -163,13 +163,25 @@ input[type="text"], input[type="search"], input[type="date"], input[type="time"]
 .pair .btn { padding: 0 8px; }
 .byhand { width: 100%; display: flex; flex-direction: column; gap: 6px; }
 .byhand span { color: var(--muted); font-size: 15px; text-align: center; }
-.tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 0; border: 2px solid var(--line); border-radius: 14px; overflow: hidden; background: var(--surface); }
-.tab { min-height: 56px; border: 0; background: transparent; font-weight: 700; font-size: 19px; color: var(--muted); }
+.tabs { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0; border: 2px solid var(--line); border-radius: 14px; overflow: hidden; background: var(--surface); }
+.tab { min-height: 56px; border: 0; background: transparent; font-weight: 700; font-size: 16px; color: var(--muted); padding: 0 2px; }
+.tab + .tab { border-left: 2px solid var(--line); }
 .tab.on { background: var(--ink); color: var(--bg); }
 .stages { display: flex; flex-direction: column; gap: 8px; }
 .stage { min-height: var(--tap); border-radius: 14px; border: 2px solid var(--line); background: var(--surface); font-weight: 700; font-size: 19px; text-align: left; padding: 0 16px; }
 .stage.on, .chip.on { background: var(--ink); border-color: var(--ink); color: var(--bg); }
 .stages.missing .stage { border-color: var(--danger); }
+.alert { width: 100%; min-height: var(--tap); padding: 10px 16px; border: 0; border-radius: 14px; background: var(--tag); color: var(--tag-ink); font-weight: 800; font-size: 18px; text-align: left; }
+.alert small { display: block; font-weight: 600; font-size: 15px; }
+.due { display: flex; flex-direction: column; gap: 10px; }
+.due h2 { margin-top: 8px; }
+.due .none { margin: 0; color: var(--muted); }
+.when b.late { color: var(--danger); }
+.dates { display: flex; flex-direction: column; gap: 8px; }
+.dates div { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 12px 14px; border-radius: 14px; border: 2px solid var(--line); background: var(--surface); }
+.dates span { color: var(--muted); font-size: 16px; }
+.dates b { text-align: right; font-variant-numeric: tabular-nums; }
+.dates small { display: block; font-weight: 400; color: var(--muted); font-size: 15px; }
 .version { text-align: center; color: var(--muted); font-size: 14px; margin: 0; }
 .empty {
   border: 2px dashed var(--line);
@@ -224,6 +236,8 @@ input[type="text"], input[type="search"], input[type="date"], input[type="time"]
     <span class="count" id="count"></span>
   </div>
 
+  <button type="button" class="alert" id="dueAlert" hidden></button>
+
   <section class="speak" aria-label="Log a breeding">
     <button type="button" class="mic" id="micBtn" aria-label="Tap and speak a breeding">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15a3.5 3.5 0 0 0 3.5-3.5v-6a3.5 3.5 0 0 0-7 0v6A3.5 3.5 0 0 0 12 15zm6-3.5a1 1 0 0 0-2 0 4 4 0 0 1-8 0 1 1 0 0 0-2 0 6 6 0 0 0 5 5.9V20H8.5a1 1 0 0 0 0 2h7a1 1 0 0 0 0-2H13v-2.6a6 6 0 0 0 5-5.9z"/></svg>
@@ -248,6 +262,7 @@ input[type="text"], input[type="search"], input[type="date"], input[type="time"]
     <div class="tabs">
       <button type="button" class="tab on" id="tabBreed" aria-pressed="true">Breedings</button>
       <button type="button" class="tab" id="tabHeat" aria-pressed="false">Heat</button>
+      <button type="button" class="tab" id="tabDue" aria-pressed="false">Coming in</button>
     </div>
     <input type="search" id="search" placeholder="Find a sow" autocomplete="off" aria-label="Find a sow">
   </section>
@@ -268,8 +283,16 @@ input[type="text"], input[type="search"], input[type="date"], input[type="time"]
       <li>&ldquo;118 went out yesterday&rdquo;</li>
     </ul>
   </div>
+  <div class="due" id="dueView" hidden>
+    <h2>Due back in heat</h2>
+    <ul class="list" id="dueHeat"></ul>
+    <p class="none" id="dueHeatNone">No sows due back in the next 2 weeks.</p>
+    <h2>Due to farrow</h2>
+    <ul class="list" id="dueFarrow"></ul>
+    <p class="none" id="dueFarrowNone">No sows due to farrow in the next 2 weeks.</p>
+  </div>
   <div class="empty" id="nomatch" hidden><p>Nothing matches that search.</p></div>
-  <p class="version">Version 3</p>
+  <p class="version">Version 4</p>
 </div>
 
 <div class="wrap" id="sowView" hidden>
@@ -278,6 +301,7 @@ input[type="text"], input[type="search"], input[type="date"], input[type="time"]
     <span class="tag" id="sowTag"></span>
     <p id="sowSummary"></p>
   </div>
+  <div class="dates" id="sowDates"></div>
   <div class="pair">
     <button type="button" class="btn go" id="sowAddBtn">Log breeding</button>
     <button type="button" class="btn go" id="sowHeatBtn">Log heat</button>
@@ -590,6 +614,73 @@ input[type="text"], input[type="search"], input[type="date"], input[type="time"]
     return r.part ? r.part.charAt(0).toUpperCase() + r.part.slice(1) : '';
   }
 
+  /* ---------- Helpful dates ---------- */
+  var HEAT_DAYS = 21, FARROW_DAYS = 114, LOOK_AHEAD = 14, KEEP_OVERDUE = 7;
+  function plusDays(iso, n) { return toISO(addDays(fromISO(iso), n)); }
+  function daysUntil(iso) { return dayDiff(iso, toISO(new Date())); }
+  function dueText(iso) {
+    var n = daysUntil(iso);
+    if (n === 0) return 'Today';
+    if (n === 1) return 'Tomorrow';
+    if (n > 1) return 'In ' + n + ' days';
+    return (-n) + (n === -1 ? ' day overdue' : ' days overdue');
+  }
+  function shortDate(iso) { var d = fromISO(iso); return MO[d.getMonth()] + ' ' + d.getDate(); }
+  // For each sow: find her most recent heat (records within 10 days of each other count as one heat),
+  // then work out when she should come back in and, if she was bred, when she should farrow.
+  function outlook() {
+    var by = {};
+    everything().forEach(function (r) { var k = key(r.sow); (by[k] = by[k] || []).push(r); });
+    return Object.keys(by).map(function (k) {
+      var recs = by[k].slice().sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : a.created - b.created; });
+      var heat = [], start = null;
+      recs.forEach(function (r) {
+        if (start && dayDiff(r.date, start) > 10) { heat = []; start = null; }
+        if (!start) start = r.date;
+        heat.push(r);
+      });
+      function first(test) { for (var i = 0; i < heat.length; i++) if (test(heat[i])) return heat[i]; return null; }
+      var standing = first(function (r) { return r.type === 'standing'; });
+      var bred = first(function (r) { return !isHeat(r); });
+      var signs = first(function (r) { return r.type === 'signs'; });
+      var ref = (standing || bred || signs || heat[0]).date;
+      return {
+        sow: recs[recs.length - 1].sow,
+        lastHeat: ref,
+        nextHeat: plusDays(ref, HEAT_DAYS),
+        bred: bred,
+        farrow: bred ? plusDays(bred.date, FARROW_DAYS) : null
+      };
+    });
+  }
+  function inWindow(iso) { var n = daysUntil(iso); return n <= LOOK_AHEAD && n >= -KEEP_OVERDUE; }
+  function comingIn() {
+    var all = outlook();
+    function byDate(f) { return function (a, b) { return a[f] < b[f] ? -1 : a[f] > b[f] ? 1 : 0; }; }
+    return {
+      heat: all.filter(function (o) { return inWindow(o.nextHeat); }).sort(byDate('nextHeat')),
+      farrow: all.filter(function (o) { return o.farrow && inWindow(o.farrow); }).sort(byDate('farrow'))
+    };
+  }
+  function makeDueRow(o, field) {
+    var li = el('li');
+    var b = el('button', 'row');
+    b.type = 'button';
+    b.appendChild(el('span', 'tag', o.sow));
+    var who = el('span', 'who');
+    who.appendChild(el('b', '', o.bred ? 'Bred to ' + o.bred.boar : 'Not bred'));
+    who.appendChild(el('small', '', o.bred ? 'Bred ' + shortDate(o.bred.date) : 'Last heat ' + shortDate(o.lastHeat)));
+    b.appendChild(who);
+    var when = el('span', 'when');
+    var d = el('b', daysUntil(o[field]) < 0 ? 'late' : '', niceDate(o[field]));
+    when.appendChild(d);
+    when.appendChild(document.createTextNode(dueText(o[field])));
+    b.appendChild(when);
+    b.addEventListener('click', function () { openSow(o.sow); });
+    li.appendChild(b);
+    return li;
+  }
+
   /* ---------- Screen ---------- */
   function $(id) { return document.getElementById(id); }
   var listEl = $('list'), searchEl = $('search');
@@ -658,6 +749,19 @@ input[type="text"], input[type="search"], input[type="date"], input[type="time"]
     sum.appendChild(document.createTextNode(breds.length
       ? 'Last bred ' + agoText(breds[0].date).toLowerCase() + ' to ' + breds[0].boar
       : 'Not bred yet'));
+    var mine = outlook().filter(function (o) { return key(o.sow) === k; })[0];
+    var dates = $('sowDates');
+    dates.textContent = '';
+    function dateLine(label, iso) {
+      var d = el('div');
+      d.appendChild(el('span', '', label));
+      var v = el('b', '', niceDate(iso));
+      v.appendChild(el('small', '', dueText(iso)));
+      d.appendChild(v);
+      dates.appendChild(d);
+    }
+    if (mine && daysUntil(mine.nextHeat) >= -KEEP_OVERDUE) dateLine(mine.bred ? 'Back in heat if not settled' : 'Next heat expected', mine.nextHeat);
+    if (mine && mine.farrow && daysUntil(mine.farrow) >= -KEEP_OVERDUE) dateLine('Due to farrow', mine.farrow);
     var list = $('sowList');
     list.textContent = '';
     rows.forEach(function (r) {
@@ -677,27 +781,67 @@ input[type="text"], input[type="search"], input[type="date"], input[type="time"]
     tab = t;
     $('tabBreed').classList.toggle('on', t === 'breeding');
     $('tabHeat').classList.toggle('on', t === 'heat');
+    $('tabDue').classList.toggle('on', t === 'due');
     $('tabBreed').setAttribute('aria-pressed', t === 'breeding');
     $('tabHeat').setAttribute('aria-pressed', t === 'heat');
+    $('tabDue').setAttribute('aria-pressed', t === 'due');
     render();
   }
   $('tabBreed').addEventListener('click', function () { setTab('breeding'); });
   $('tabHeat').addEventListener('click', function () { setTab('heat'); });
+  $('tabDue').addEventListener('click', function () { setTab('due'); });
+  $('dueAlert').addEventListener('click', function () {
+    setTab('due');
+    $('tabDue').scrollIntoView({ block: 'start' });
+  });
 
   function render() {
     renderSow();
     var q = key(searchEl.value);
-    var all = sorted(tab === 'heat' ? data.heats : data.breedings);
-    var rows = q ? all.filter(function (r) { return key(r.sow).indexOf(q) !== -1; }) : all;
+    function match(r) { return !q || key(r.sow).indexOf(q) !== -1; }
+    var due = comingIn();
+
+    // Yellow bar at the top when a sow needs watching now (overdue, today or tomorrow)
+    var soonH = due.heat.filter(function (o) { return daysUntil(o.nextHeat) <= 1; }).length;
+    var soonF = due.farrow.filter(function (o) { return daysUntil(o.farrow) <= 1; }).length;
+    var bar = $('dueAlert');
+    bar.hidden = soonH + soonF === 0;
+    bar.textContent = '';
+    if (soonH + soonF) {
+      var parts = [];
+      if (soonH) parts.push(plural(soonH, 'sow') + ' due back in heat');
+      if (soonF) parts.push(soonF + ' due to farrow');
+      bar.appendChild(document.createTextNode(parts.join(', ')));
+      bar.appendChild(el('small', '', 'Now or by tomorrow. Tap to see.'));
+    }
+    try { if (navigator.setAppBadge) { if (soonH + soonF) navigator.setAppBadge(soonH + soonF); else navigator.clearAppBadge(); } } catch (e) {}
+
+    var isDue = tab === 'due';
+    listEl.hidden = isDue;
+    $('dueView').hidden = !isDue;
     listEl.textContent = '';
-    rows.forEach(function (r) {
-      listEl.appendChild(makeRow(r, true, function () { openSow(r.sow); }));
-    });
+    var all = [], rows = [];
+    if (isDue) {
+      var dh = due.heat.filter(match), df = due.farrow.filter(match);
+      $('dueHeat').textContent = ''; $('dueFarrow').textContent = '';
+      dh.forEach(function (o) { $('dueHeat').appendChild(makeDueRow(o, 'nextHeat')); });
+      df.forEach(function (o) { $('dueFarrow').appendChild(makeDueRow(o, 'farrow')); });
+      $('dueHeatNone').hidden = dh.length > 0;
+      $('dueFarrowNone').hidden = df.length > 0;
+    } else {
+      all = sorted(tab === 'heat' ? data.heats : data.breedings);
+      rows = all.filter(match);
+      rows.forEach(function (r) {
+        listEl.appendChild(makeRow(r, true, function () { openSow(r.sow); }));
+      });
+    }
     $('empty').hidden = !(tab === 'breeding' && all.length === 0);
     $('emptyHeat').hidden = !(tab === 'heat' && all.length === 0);
-    $('nomatch').hidden = !(all.length > 0 && rows.length === 0);
+    $('nomatch').hidden = !(!isDue && all.length > 0 && rows.length === 0);
     var nb = data.breedings.length, nh = data.heats.length;
     $('count').textContent = nb + nh ? plural(nb, 'breeding') + ' \u00B7 ' + nh + ' heat' : '';
+    var nDue = due.heat.length + due.farrow.length;
+    $('tabDue').textContent = 'Coming in' + (nDue ? ' (' + nDue + ')' : '');
   }
   searchEl.addEventListener('input', render);
 
