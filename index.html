@@ -154,6 +154,12 @@ input[type="text"], input[type="search"], input[type="date"] {
 .who small { color: var(--muted); font-size: 15px; }
 .when { text-align: right; font-size: 16px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .when b { display: block; color: var(--ink); font-size: 18px; }
+.sowhead { display: flex; align-items: center; gap: 14px; }
+.sowhead .tag { font-size: 30px; padding: 12px 16px; max-width: 60%; }
+.sowhead p { margin: 0; color: var(--muted); font-size: 17px; min-width: 0; }
+.sowhead p b { display: block; color: var(--ink); font-size: 19px; }
+.row.plain { grid-template-columns: 1fr auto; }
+.version { text-align: center; color: var(--muted); font-size: 14px; margin: 0; }
 .empty {
   border: 2px dashed var(--line);
   border-radius: 14px;
@@ -201,7 +207,7 @@ input[type="text"], input[type="search"], input[type="date"] {
 </head>
 <body>
 <!--BODY-START-->
-<div class="wrap">
+<div class="wrap" id="mainView">
   <div class="top">
     <h1>Sow Tracker</h1>
     <span class="count" id="count"></span>
@@ -235,6 +241,18 @@ input[type="text"], input[type="search"], input[type="date"] {
     </ul>
   </div>
   <div class="empty" id="nomatch" hidden><p>No breedings match that search.</p></div>
+  <p class="version">Version 2</p>
+</div>
+
+<div class="wrap" id="sowView" hidden>
+  <button type="button" class="btn" id="backBtn">&lsaquo; All breedings</button>
+  <div class="sowhead">
+    <span class="tag" id="sowTag"></span>
+    <p id="sowSummary"></p>
+  </div>
+  <button type="button" class="btn go wide" id="sowAddBtn">Log a breeding for her</button>
+  <h2>History</h2>
+  <ul class="list" id="sowList"></ul>
 </div>
 
 <div class="sheet" id="sheet" hidden>
@@ -459,28 +477,71 @@ input[type="text"], input[type="search"], input[type="date"] {
     return e;
   }
 
+  // One line in a list. Main list shows the sow's tag; her own page leads with the date.
+  function makeRow(r, withTag, onTap) {
+    var li = el('li');
+    var b = el('button', withTag ? 'row' : 'row plain');
+    b.type = 'button';
+    if (withTag) b.appendChild(el('span', 'tag', r.sow));
+    var who = el('span', 'who');
+    who.appendChild(el('b', '', (withTag ? '' : 'Bred to ') + (r.boar || 'boar not set')));
+    var n = serviceNumber(r);
+    if (n > 1) who.appendChild(el('small', '', ordinal(n) + ' breeding this heat'));
+    b.appendChild(who);
+    var when = el('span', 'when');
+    when.appendChild(el('b', '', niceDate(r.date)));
+    when.appendChild(document.createTextNode(agoText(r.date)));
+    b.appendChild(when);
+    b.addEventListener('click', onTap);
+    li.appendChild(b);
+    return li;
+  }
+
+  /* ---------- One sow's history ---------- */
+  var currentSow = null, mainScroll = 0;
+  function openSow(name) {
+    mainScroll = window.scrollY || 0;
+    currentSow = name;
+    $('mainView').hidden = true;
+    $('sowView').hidden = false;
+    renderSow();
+    window.scrollTo(0, 0);
+  }
+  function closeSow() {
+    currentSow = null;
+    $('sowView').hidden = true;
+    $('mainView').hidden = false;
+    window.scrollTo(0, mainScroll);
+  }
+  function renderSow() {
+    if (currentSow == null) return;
+    var k = key(currentSow);
+    var rows = sorted().filter(function (r) { return key(r.sow) === k; });
+    if (!rows.length) { closeSow(); return; }
+    $('sowTag').textContent = rows[0].sow;
+    var sum = $('sowSummary');
+    sum.textContent = '';
+    sum.appendChild(el('b', '', rows.length + (rows.length === 1 ? ' breeding' : ' breedings')));
+    sum.appendChild(document.createTextNode('Last bred ' + agoText(rows[0].date).toLowerCase() + ' to ' + rows[0].boar));
+    var list = $('sowList');
+    list.textContent = '';
+    rows.forEach(function (r) {
+      list.appendChild(makeRow(r, false, function () { openSheet(r, null); }));
+    });
+  }
+  $('backBtn').addEventListener('click', closeSow);
+  $('sowAddBtn').addEventListener('click', function () {
+    openSheet({ sow: $('sowTag').textContent, boar: '', date: toISO(new Date()) }, null);
+  });
+
   function render() {
+    renderSow();
     var q = key(searchEl.value);
     var all = sorted();
     var rows = q ? all.filter(function (r) { return key(r.sow).indexOf(q) !== -1; }) : all;
     listEl.textContent = '';
     rows.forEach(function (r) {
-      var li = el('li');
-      var b = el('button', 'row');
-      b.type = 'button';
-      b.appendChild(el('span', 'tag', r.sow));
-      var who = el('span', 'who');
-      who.appendChild(el('b', '', r.boar || 'Boar not set'));
-      var n = serviceNumber(r);
-      if (n > 1) who.appendChild(el('small', '', ordinal(n) + ' breeding this heat'));
-      b.appendChild(who);
-      var when = el('span', 'when');
-      when.appendChild(el('b', '', niceDate(r.date)));
-      when.appendChild(document.createTextNode(agoText(r.date)));
-      b.appendChild(when);
-      b.addEventListener('click', function () { openSheet(r, null); });
-      li.appendChild(b);
-      listEl.appendChild(li);
+      listEl.appendChild(makeRow(r, true, function () { openSow(r.sow); }));
     });
     $('empty').hidden = all.length > 0;
     $('nomatch').hidden = !(all.length > 0 && rows.length === 0);
@@ -500,7 +561,7 @@ input[type="text"], input[type="search"], input[type="date"] {
   var editing = null;
   function openSheet(record, heardText) {
     editing = record && record.id ? record : null;
-    $('sheetTitle').textContent = editing ? 'Edit breeding' : 'Check this breeding';
+    $('sheetTitle').textContent = editing ? 'Edit breeding' : heardText ? 'Check this breeding' : 'New breeding';
     $('heard').hidden = !heardText;
     $('heard').textContent = heardText ? 'Heard: “' + heardText + '”' : '';
     $('fSow').value = record ? record.sow : '';
@@ -537,6 +598,7 @@ input[type="text"], input[type="search"], input[type="date"] {
     if (!boar) { toast('Add the boar first'); $('fBoar').focus(); return; }
     if (!date) { toast('Pick a date'); return; }
     if (editing) {
+      if (currentSow != null && key(editing.sow) === key(currentSow)) currentSow = sow;   // follow a renamed sow
       editing.sow = sow; editing.boar = boar; editing.date = date;
     } else {
       data.breedings.push({
