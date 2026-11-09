@@ -1,0 +1,13 @@
+{
+  "name": "Sow Tracker",
+  "short_name": "Sow Tracker",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "background_color": "#f1f4ee",
+  "theme_color": "#1f6b3a",
+  "icons": [
+    { "src": "icon-180.png", "sizes": "180x180", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

@@ -1,0 +1,662 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Sow Tracker">
+<meta name="theme-color" content="#1f6b3a">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<!--APP-START-->
+<title>Sow Tracker</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Layout: one thumb-reachable column. Speak or type at the top, records below.
+   Every control is at least 56px tall for gloved hands. System fonts only, so it works offline. */
+:root {
+  --bg: #f1f4ee;
+  --surface: #ffffff;
+  --ink: #131a13;
+  --muted: #535f53;
+  --line: #cbd3c7;
+  --go: #1f6b3a;
+  --go-ink: #ffffff;
+  --tag: #f6c915;      /* ear-tag yellow */
+  --tag-ink: #1a1500;
+  --danger: #b3261e;
+  --danger-ink: #ffffff;
+  --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --tap: 60px;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e130e; --surface: #1a221a; --ink: #eef2ea; --muted: #a5b0a1; --line: #323e32;
+    --go: #43a865; --go-ink: #05140a; --danger: #ff7366; --danger-ink: #1c0502;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e130e; --surface: #1a221a; --ink: #eef2ea; --muted: #a5b0a1; --line: #323e32;
+  --go: #43a865; --go-ink: #05140a; --danger: #ff7366; --danger-ink: #1c0502;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font: 18px/1.35 var(--font);
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+}
+.wrap {
+  max-width: 560px;
+  margin: 0 auto;
+  padding-block: 16px 40px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+h1 { font-size: 26px; margin: 0; letter-spacing: -0.01em; }
+h2 { font-size: 20px; margin: 0; }
+.top { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.count { color: var(--muted); font-size: 16px; font-variant-numeric: tabular-nums; }
+
+button, input { font: inherit; color: inherit; }
+button { cursor: pointer; touch-action: manipulation; }
+:focus-visible { outline: 3px solid var(--go); outline-offset: 2px; }
+
+.btn {
+  min-height: var(--tap);
+  padding: 0 20px;
+  border-radius: 14px;
+  border: 2px solid var(--line);
+  background: var(--surface);
+  font-weight: 700;
+  font-size: 19px;
+}
+.btn.go { background: var(--go); border-color: var(--go); color: var(--go-ink); }
+.btn.danger { border-color: var(--danger); color: var(--danger); }
+.btn.danger.armed { background: var(--danger); color: var(--danger-ink); }
+.btn.wide { width: 100%; }
+
+/* Speak area */
+.speak { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+.mic {
+  width: 168px; height: 168px;
+  border-radius: 50%;
+  border: 0;
+  background: var(--go);
+  color: var(--go-ink);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+  font-weight: 800; font-size: 19px;
+}
+.mic svg { width: 64px; height: 64px; fill: currentColor; }
+.mic.listening { background: var(--danger); color: var(--danger-ink); animation: pulse 1.2s ease-in-out infinite; }
+@keyframes pulse { 50% { transform: scale(1.05); } }
+@media (prefers-reduced-motion: reduce) { .mic.listening { animation: none; } }
+.status { min-height: 1.4em; text-align: center; color: var(--muted); font-size: 17px; text-wrap: balance; }
+.status.live { color: var(--ink); font-weight: 600; }
+.status.err { color: var(--danger); font-weight: 600; }
+
+.typed { display: flex; gap: 8px; width: 100%; }
+.typed input { flex: 1; min-width: 0; }
+input[type="text"], input[type="search"], input[type="date"] {
+  min-height: var(--tap);
+  width: 100%;
+  padding: 0 14px;
+  border-radius: 14px;
+  border: 2px solid var(--line);
+  background: var(--surface);
+  font-size: 19px;
+  -webkit-appearance: none; appearance: none;
+}
+
+/* Records */
+.listhead { display: flex; flex-direction: column; gap: 10px; }
+.list { display: flex; flex-direction: column; gap: 8px; list-style: none; margin: 0; padding: 0; }
+.row {
+  width: 100%;
+  min-height: 72px;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  text-align: left;
+  background: var(--surface);
+  border: 2px solid var(--line);
+  border-radius: 14px;
+}
+.tag {
+  display: inline-block;
+  min-width: 64px;
+  max-width: 130px;
+  padding: 8px 10px;
+  border-radius: 8px 8px 14px 14px;   /* ear-tag shape */
+  background: var(--tag);
+  color: var(--tag-ink);
+  font-weight: 800;
+  font-size: 20px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.who { min-width: 0; overflow-wrap: anywhere; }
+.who b { display: block; font-size: 19px; }
+.who small { color: var(--muted); font-size: 15px; }
+.when { text-align: right; font-size: 16px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.when b { display: block; color: var(--ink); font-size: 18px; }
+.empty {
+  border: 2px dashed var(--line);
+  border-radius: 14px;
+  padding: 18px;
+  color: var(--muted);
+}
+.empty p { margin: 0 0 8px; }
+.empty ul { margin: 0; padding-left: 20px; }
+.empty li { margin: 4px 0; color: var(--ink); }
+
+/* Confirm / edit sheet */
+.sheet {
+  position: fixed; inset: 0; z-index: 20;
+  background: var(--bg);
+  overflow-y: auto;
+  padding-top: calc(16px + env(safe-area-inset-top, 0px));
+  padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.sheet form { max-width: 560px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+.heard { margin: 0; color: var(--muted); font-size: 16px; overflow-wrap: anywhere; }
+.field { display: flex; flex-direction: column; gap: 6px; }
+.field label { font-weight: 700; font-size: 16px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
+.field input.missing { border-color: var(--danger); }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip {
+  min-height: 48px; padding: 0 16px;
+  border-radius: 24px; border: 2px solid var(--line);
+  background: var(--surface); font-weight: 600; font-size: 17px;
+}
+.actions { display: flex; flex-direction: column; gap: 10px; margin-top: 6px; }
+.btn.save { min-height: 76px; font-size: 23px; }
+
+.toast {
+  position: fixed; left: 50%; transform: translateX(-50%);
+  bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+  z-index: 30;
+  background: var(--ink); color: var(--bg);
+  padding: 14px 22px; border-radius: 28px;
+  font-weight: 700; max-width: calc(100% - 32px); text-align: center;
+}
+</style>
+<!--HEAD-END-->
+</head>
+<body>
+<!--BODY-START-->
+<div class="wrap">
+  <div class="top">
+    <h1>Sow Tracker</h1>
+    <span class="count" id="count"></span>
+  </div>
+
+  <section class="speak" aria-label="Log a breeding">
+    <button type="button" class="mic" id="micBtn" aria-label="Tap and speak a breeding">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15a3.5 3.5 0 0 0 3.5-3.5v-6a3.5 3.5 0 0 0-7 0v6A3.5 3.5 0 0 0 12 15zm6-3.5a1 1 0 0 0-2 0 4 4 0 0 1-8 0 1 1 0 0 0-2 0 6 6 0 0 0 5 5.9V20H8.5a1 1 0 0 0 0 2h7a1 1 0 0 0 0-2H13v-2.6a6 6 0 0 0 5-5.9z"/></svg>
+      <span id="micLabel">Tap to speak</span>
+    </button>
+    <div class="status" id="status" role="status" aria-live="polite">Say: &ldquo;Sow 118 bred to Hang Time today&rdquo;</div>
+
+    <form class="typed" id="typedForm">
+      <input type="text" id="typedText" placeholder="Or type it here" autocomplete="off" autocapitalize="sentences" enterkeyhint="go" aria-label="Type a breeding">
+      <button type="submit" class="btn go">Go</button>
+    </form>
+    <button type="button" class="btn wide" id="manualBtn">Fill in by hand</button>
+  </section>
+
+  <section class="listhead" aria-label="Breedings">
+    <h2>Breedings</h2>
+    <input type="search" id="search" placeholder="Find a sow" autocomplete="off" aria-label="Find a sow">
+  </section>
+  <ul class="list" id="list"></ul>
+  <div class="empty" id="empty" hidden>
+    <p>No breedings logged yet. Tap the microphone and try one of these:</p>
+    <ul>
+      <li>&ldquo;Sow 118 was bred to Hang Time on July 26th&rdquo;</li>
+      <li>&ldquo;Rosie bred to Hang Time today&rdquo;</li>
+      <li>&ldquo;Bred sow 12-4 to Big Red yesterday&rdquo;</li>
+    </ul>
+  </div>
+  <div class="empty" id="nomatch" hidden><p>No breedings match that search.</p></div>
+</div>
+
+<div class="sheet" id="sheet" hidden>
+  <form id="entryForm" novalidate>
+    <h2 id="sheetTitle">Check this breeding</h2>
+    <p class="heard" id="heard" hidden></p>
+    <div class="field">
+      <label for="fSow">Sow (number, name or ear notch)</label>
+      <input type="text" id="fSow" autocomplete="off" autocapitalize="words">
+    </div>
+    <div class="field">
+      <label for="fBoar">Boar</label>
+      <input type="text" id="fBoar" autocomplete="off" autocapitalize="words">
+      <div class="chips" id="boarChips"></div>
+    </div>
+    <div class="field">
+      <label for="fDate">Date bred</label>
+      <input type="date" id="fDate">
+      <div class="chips">
+        <button type="button" class="chip" data-day="0">Today</button>
+        <button type="button" class="chip" data-day="-1">Yesterday</button>
+      </div>
+    </div>
+    <div class="actions">
+      <button type="submit" class="btn go save" id="saveBtn">Save</button>
+      <button type="button" class="btn" id="cancelBtn">Cancel</button>
+      <button type="button" class="btn danger" id="deleteBtn" hidden>Delete this breeding</button>
+    </div>
+  </form>
+</div>
+
+<div class="toast" id="toast" hidden></div>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ---------- Dates ---------- */
+  function pad(n) { return (n < 10 ? '0' : '') + n; }
+  function toISO(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
+  function fromISO(s) { var p = s.split('-'); return new Date(+p[0], +p[1] - 1, +p[2]); }
+  function addDays(d, n) { var x = new Date(d.getFullYear(), d.getMonth(), d.getDate()); x.setDate(x.getDate() + n); return x; }
+  function dayDiff(a, b) { return Math.round((fromISO(a) - fromISO(b)) / 86400000); }
+  var WD = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  var MO = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  function niceDate(iso) {
+    var d = fromISO(iso), now = new Date();
+    var s = WD[d.getDay()] + ', ' + MO[d.getMonth()] + ' ' + d.getDate();
+    if (d.getFullYear() !== now.getFullYear()) s += ', ' + d.getFullYear();
+    return s;
+  }
+  function agoText(iso) {
+    var n = dayDiff(toISO(new Date()), iso);
+    if (n === 0) return 'Today';
+    if (n === 1) return 'Yesterday';
+    if (n > 1) return n + ' days ago';
+    return 'In ' + (-n) + (n === -1 ? ' day' : ' days');
+  }
+
+  /* ---------- Understanding what was said ---------- */
+  var MONTH_RE = '(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|june?|july?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)';
+  var ORD = {};
+  (function () {
+    var ones = ['first', 'second', 'third', 'fourth', 'fifth', 'sixth', 'seventh', 'eighth', 'ninth'];
+    var teens = ['tenth', 'eleventh', 'twelfth', 'thirteenth', 'fourteenth', 'fifteenth', 'sixteenth', 'seventeenth', 'eighteenth', 'nineteenth'];
+    ones.forEach(function (w, i) { ORD[w] = i + 1; ORD['twenty ' + w] = 21 + i; });
+    teens.forEach(function (w, i) { ORD[w] = 10 + i; });
+    ORD.twentieth = 20; ORD.thirtieth = 30; ORD['thirty first'] = 31;
+  })();
+  var ORD_RE = Object.keys(ORD).sort(function (a, b) { return b.length - a.length; })
+    .map(function (w) { return w.replace(' ', '[ -]'); }).join('|');
+  var DAY_RE = '(\\d{1,2}(?:st|nd|rd|th)?|' + ORD_RE + ')';
+  var SMALL = { a: 1, one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10 };
+  var WEEKDAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+
+  function dayNum(s) {
+    s = s.toLowerCase().replace('-', ' ');
+    return ORD[s] || parseInt(s, 10);
+  }
+  function monthNum(s) { return 'janfebmaraprmayjunjulaugsepoctnovdec'.indexOf(s.toLowerCase().slice(0, 3)) / 3; }
+  // A date said without a year means the most recent one, never one in the future.
+  function recent(month, day, year, now) {
+    if (year) return new Date(year < 100 ? 2000 + year : year, month, day);
+    var d = new Date(now.getFullYear(), month, day);
+    if (d > addDays(now, 1)) d = new Date(now.getFullYear() - 1, month, day);
+    return d;
+  }
+
+  function extractDate(text, now) {
+    var m, d = null;
+    var rules = [
+      [new RegExp('\\b(?:on\\s+)?' + MONTH_RE + '\\.?\\s+(?:the\\s+)?' + DAY_RE + '\\b(?:,?\\s+(\\d{4}))?', 'i'),
+        function (m) { return recent(monthNum(m[1]), dayNum(m[2]), m[3] && +m[3], now); }],
+      [new RegExp('\\b(?:on\\s+)?(?:the\\s+)?' + DAY_RE + '\\s+of\\s+' + MONTH_RE + '\\b(?:,?\\s+(\\d{4}))?', 'i'),
+        function (m) { return recent(monthNum(m[2]), dayNum(m[1]), m[3] && +m[3], now); }],
+      [/\b(?:on\s+)?(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?(?!\d)/i,
+        function (m) { return recent(+m[1] - 1, +m[2], m[3] && +m[3], now); }],
+      [/\b(\d{1,2}|a|one|two|three|four|five|six|seven|eight|nine|ten)\s+days?\s+ago\b/i,
+        function (m) { return addDays(now, -(SMALL[m[1].toLowerCase()] || +m[1])); }],
+      [/\b(?:the\s+)?day\s+before\s+yesterday\b/i, function () { return addDays(now, -2); }],
+      [/\byesterday(?:\s+(?:morning|afternoon|evening))?\b|\blast\s+night\b/i, function () { return addDays(now, -1); }],
+      [/\btoday\b|\btonight\b|\bthis\s+(?:morning|afternoon|evening)\b|\bjust\s+now\b/i, function () { return addDays(now, 0); }],
+      [/\b(?:on\s+)?(last\s+)?(sunday|monday|tuesday|wednesday|thursday|friday|saturday)\b/i,
+        function (m) {
+          var back = (now.getDay() - WEEKDAYS.indexOf(m[2].toLowerCase()) + 7) % 7;
+          if (back === 0 && m[1]) back = 7;
+          return addDays(now, -back);
+        }],
+      [new RegExp('\\bon\\s+the\\s+' + DAY_RE + '\\b', 'i'),
+        function (m) {
+          var x = new Date(now.getFullYear(), now.getMonth(), dayNum(m[1]));
+          if (x > addDays(now, 1)) x = new Date(now.getFullYear(), now.getMonth() - 1, dayNum(m[1]));
+          return x;
+        }]
+    ];
+    for (var i = 0; i < rules.length; i++) {
+      m = rules[i][0].exec(text);
+      if (m) {
+        d = rules[i][1](m);
+        if (d && !isNaN(d)) {
+          text = text.slice(0, m.index) + ' ' + text.slice(m.index + m[0].length);
+          // drop a leftover "this morning" etc. once the day itself is known
+          text = text.replace(/\b(?:this|in the)\s+(?:morning|afternoon|evening)\b/i, ' ');
+          return { date: toISO(d), said: true, rest: text };
+        }
+      }
+    }
+    return { date: toISO(now), said: false, rest: text };
+  }
+
+  function tidy(s) {
+    return s.replace(/\s+/g, ' ').replace(/^[\s,.;:!?]+|[\s,.;:!?]+$/g, '').replace(/\s+(?:on|at)$/i, '').trim();
+  }
+  function titleCase(s) {
+    return s.split(' ').map(function (w) {
+      return /^[a-z]/.test(w) ? w.charAt(0).toUpperCase() + w.slice(1) : w;
+    }).join(' ');
+  }
+  function cleanSow(s) {
+    s = tidy(s).replace(/^(?:the\s+)?(?:sow|gilt)\s+/i, '').replace(/^(?:number|no\.?|#)\s*/i, '');
+    s = s.replace(/(\d)\s*(?:dash|-)\s*(\d)/gi, '$1-$2');   // ear notch: "12 dash 4" -> 12-4
+    return titleCase(tidy(s));
+  }
+  function cleanBoar(s) {
+    s = tidy(s).replace(/^(?:the\s+)?boar\s+/i, '');
+    return titleCase(tidy(s));
+  }
+
+  function parseBreeding(raw, now) {
+    var got = extractDate(raw, now || new Date());
+    var t = tidy(got.rest);
+    var BRED = '(?:bred|bread|breed|brad)';
+    var TO = '(?:to|too|with|by)';
+    var sow = '', boar = '', m;
+    // "bred sow 118 to Hang Time"
+    m = new RegExp('^(?:i\\s+|we\\s+)?' + BRED + '\\s+(.+?)\\s+' + TO + '\\s+(.+)$', 'i').exec(t);
+    // "sow 118 was bred to Hang Time"
+    if (!m) m = new RegExp('^(.+?)\\s+(?:was\\s+|got\\s+|is\\s+)?' + BRED + '\\s+' + TO + '\\s+(.+)$', 'i').exec(t);
+    if (m) { sow = m[1]; boar = m[2]; }
+    else if ((m = /^(.+?)\s+to\s+(.+)$/i.exec(t))) { sow = m[1]; boar = m[2]; }
+    else { sow = t.replace(new RegExp('\\b(?:was\\s+)?' + BRED + '\\b', 'i'), ''); }
+    return { sow: cleanSow(sow), boar: cleanBoar(boar), date: got.date, dateSaid: got.said };
+  }
+
+  /* ---------- Storage (stays on this phone) ---------- */
+  var KEY = 'sowtracker.v1';
+  var data = { breedings: [] };
+  var storageOK = true;
+  function load() {
+    try {
+      var s = localStorage.getItem(KEY);
+      if (s) { var d = JSON.parse(s); if (d && Array.isArray(d.breedings)) data = d; }
+    } catch (e) { storageOK = false; }
+  }
+  function save() {
+    try { localStorage.setItem(KEY, JSON.stringify(data)); return true; }
+    catch (e) { storageOK = false; return false; }
+  }
+  function key(s) { return s.toLowerCase().replace(/\s+/g, ' ').trim(); }
+  // Reuse the spelling already on file, so "hang time" and "Hang Time" stay one boar.
+  function matchKnown(value, field) {
+    var k = key(value);
+    for (var i = 0; i < data.breedings.length; i++) {
+      if (key(data.breedings[i][field]) === k) return data.breedings[i][field];
+    }
+    return value;
+  }
+  function sorted() {
+    return data.breedings.slice().sort(function (a, b) {
+      return a.date < b.date ? 1 : a.date > b.date ? -1 : b.created - a.created;
+    });
+  }
+  function recentBoars() {
+    var seen = {}, out = [];
+    data.breedings.slice().sort(function (a, b) { return b.created - a.created; }).forEach(function (r) {
+      var k = key(r.boar);
+      if (!seen[k] && out.length < 6) { seen[k] = 1; out.push(r.boar); }
+    });
+    return out;
+  }
+  // Which breeding of this heat is it? (same sow, bred again within a week)
+  function serviceNumber(r) {
+    var n = 1;
+    data.breedings.forEach(function (o) {
+      if (o.id === r.id || key(o.sow) !== key(r.sow)) return;
+      var gap = dayDiff(r.date, o.date);
+      if (gap > 0 && gap <= 6) n++;
+      else if (gap === 0 && o.created < r.created) n++;
+    });
+    return n;
+  }
+  function ordinal(n) { return n + (n === 2 ? 'nd' : n === 3 ? 'rd' : 'th'); }
+
+  /* ---------- Screen ---------- */
+  function $(id) { return document.getElementById(id); }
+  var listEl = $('list'), searchEl = $('search');
+
+  function el(tag, cls, text) {
+    var e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text != null) e.textContent = text;
+    return e;
+  }
+
+  function render() {
+    var q = key(searchEl.value);
+    var all = sorted();
+    var rows = q ? all.filter(function (r) { return key(r.sow).indexOf(q) !== -1; }) : all;
+    listEl.textContent = '';
+    rows.forEach(function (r) {
+      var li = el('li');
+      var b = el('button', 'row');
+      b.type = 'button';
+      b.appendChild(el('span', 'tag', r.sow));
+      var who = el('span', 'who');
+      who.appendChild(el('b', '', r.boar || 'Boar not set'));
+      var n = serviceNumber(r);
+      if (n > 1) who.appendChild(el('small', '', ordinal(n) + ' breeding this heat'));
+      b.appendChild(who);
+      var when = el('span', 'when');
+      when.appendChild(el('b', '', niceDate(r.date)));
+      when.appendChild(document.createTextNode(agoText(r.date)));
+      b.appendChild(when);
+      b.addEventListener('click', function () { openSheet(r, null); });
+      li.appendChild(b);
+      listEl.appendChild(li);
+    });
+    $('empty').hidden = all.length > 0;
+    $('nomatch').hidden = !(all.length > 0 && rows.length === 0);
+    $('count').textContent = all.length ? all.length + (all.length === 1 ? ' breeding' : ' breedings') : '';
+  }
+  searchEl.addEventListener('input', render);
+
+  var toastTimer;
+  function toast(msg) {
+    var t = $('toast');
+    t.textContent = msg; t.hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { t.hidden = true; }, 2600);
+  }
+
+  /* ---------- Confirm / edit sheet ---------- */
+  var editing = null;
+  function openSheet(record, heardText) {
+    editing = record && record.id ? record : null;
+    $('sheetTitle').textContent = editing ? 'Edit breeding' : 'Check this breeding';
+    $('heard').hidden = !heardText;
+    $('heard').textContent = heardText ? 'Heard: “' + heardText + '”' : '';
+    $('fSow').value = record ? record.sow : '';
+    $('fBoar').value = record ? record.boar : '';
+    $('fDate').value = record ? record.date : toISO(new Date());
+    $('fSow').classList.remove('missing');
+    $('fBoar').classList.remove('missing');
+    $('deleteBtn').hidden = !editing;
+    disarmDelete();
+    var chips = $('boarChips');
+    chips.textContent = '';
+    recentBoars().forEach(function (name) {
+      var c = el('button', 'chip', name);
+      c.type = 'button';
+      c.addEventListener('click', function () { $('fBoar').value = name; $('fBoar').classList.remove('missing'); });
+      chips.appendChild(c);
+    });
+    $('sheet').hidden = false;
+    $('sheet').scrollTop = 0;
+  }
+  function closeSheet() { $('sheet').hidden = true; editing = null; }
+
+  Array.prototype.forEach.call(document.querySelectorAll('[data-day]'), function (c) {
+    c.addEventListener('click', function () { $('fDate').value = toISO(addDays(new Date(), +c.getAttribute('data-day'))); });
+  });
+  $('cancelBtn').addEventListener('click', closeSheet);
+
+  $('entryForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var sow = tidy($('fSow').value), boar = tidy($('fBoar').value), date = $('fDate').value;
+    $('fSow').classList.toggle('missing', !sow);
+    $('fBoar').classList.toggle('missing', !boar);
+    if (!sow) { toast('Add the sow first'); $('fSow').focus(); return; }
+    if (!boar) { toast('Add the boar first'); $('fBoar').focus(); return; }
+    if (!date) { toast('Pick a date'); return; }
+    if (editing) {
+      editing.sow = sow; editing.boar = boar; editing.date = date;
+    } else {
+      data.breedings.push({
+        id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
+        sow: matchKnown(sow, 'sow'), boar: matchKnown(boar, 'boar'), date: date, created: Date.now()
+      });
+    }
+    var ok = save();
+    closeSheet();
+    render();
+    toast(ok ? 'Saved: ' + sow + ' bred to ' + boar : 'Could not save to this phone. Check storage settings.');
+  });
+
+  var armed = false, armTimer;
+  function disarmDelete() {
+    armed = false; clearTimeout(armTimer);
+    $('deleteBtn').classList.remove('armed');
+    $('deleteBtn').textContent = 'Delete this breeding';
+  }
+  $('deleteBtn').addEventListener('click', function () {
+    if (!editing) return;
+    if (!armed) {
+      armed = true;
+      $('deleteBtn').classList.add('armed');
+      $('deleteBtn').textContent = 'Tap again to delete';
+      armTimer = setTimeout(disarmDelete, 4000);
+      return;
+    }
+    var id = editing.id;
+    data.breedings = data.breedings.filter(function (r) { return r.id !== id; });
+    save(); closeSheet(); render(); toast('Deleted');
+  });
+
+  /* ---------- Taking an entry (voice or typed) ---------- */
+  var statusEl = $('status');
+  var HINT = 'Say: “Sow 118 bred to Hang Time today”';
+  function setStatus(msg, cls) { statusEl.textContent = msg; statusEl.className = 'status' + (cls ? ' ' + cls : ''); }
+
+  function handleText(text) {
+    text = tidy(text);
+    if (!text) return;
+    var p = parseBreeding(text, new Date());
+    p.sow = matchKnown(p.sow, 'sow');
+    p.boar = matchKnown(p.boar, 'boar');
+    openSheet({ sow: p.sow, boar: p.boar, date: p.date }, text);
+  }
+
+  $('typedForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var v = $('typedText').value;
+    if (!tidy(v)) { $('typedText').focus(); return; }
+    $('typedText').value = '';
+    $('typedText').blur();
+    handleText(v);
+  });
+  $('manualBtn').addEventListener('click', function () { openSheet(null, null); });
+
+  var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  var rec = null, listening = false, heardSoFar = '';
+  var NO_VOICE = 'Voice is not available here. Tap the box below, then use the microphone key on your keyboard.';
+
+  function stopUI() {
+    listening = false;
+    $('micBtn').classList.remove('listening');
+    $('micLabel').textContent = 'Tap to speak';
+  }
+  $('micBtn').addEventListener('click', function () {
+    if (listening) { try { rec.stop(); } catch (e) {} return; }
+    if (!SR) { setStatus(NO_VOICE, 'err'); $('typedText').focus(); return; }
+    heardSoFar = '';
+    var failed = false;
+    try {
+      rec = new SR();
+      rec.lang = 'en-US';
+      rec.interimResults = true;
+      rec.continuous = false;
+      rec.onresult = function (ev) {
+        var s = '';
+        for (var i = 0; i < ev.results.length; i++) s += ev.results[i][0].transcript;
+        heardSoFar = s;
+        setStatus(s, 'live');
+      };
+      rec.onerror = function (ev) {
+        failed = true;
+        var msg = NO_VOICE;
+        if (ev.error === 'no-speech') msg = 'Did not hear anything. Tap the microphone and try again.';
+        else if (ev.error === 'network') msg = 'Voice needs a signal right now. Type it below instead.';
+        else if (ev.error === 'not-allowed' || ev.error === 'service-not-allowed') msg = 'Microphone is blocked. Allow it in Settings, or type below.';
+        else if (ev.error === 'aborted') msg = HINT;
+        setStatus(msg, ev.error === 'aborted' ? '' : 'err');
+      };
+      rec.onend = function () {
+        stopUI();
+        if (tidy(heardSoFar)) { setStatus(HINT); handleText(heardSoFar); }
+        else if (!failed) setStatus('Did not hear anything. Tap the microphone and try again.', 'err');
+      };
+      rec.start();
+      listening = true;
+      $('micBtn').classList.add('listening');
+      $('micLabel').textContent = 'Listening… tap to stop';
+      setStatus('Listening…', 'live');
+    } catch (e) {
+      stopUI();
+      setStatus(NO_VOICE, 'err');
+    }
+  });
+
+  /* ---------- Start ---------- */
+  load();
+  render();
+  if (!storageOK) toast('This browser is not saving data. Turn off Private Browsing.');
+  window.__sow = { parseBreeding: parseBreeding };   // used by the automated checks
+
+  try {
+    if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
+      navigator.serviceWorker.register('sw.js').catch(function () {});
+    }
+  } catch (e) {}
+})();
+</script>
+<!--BODY-END-->
+</body>
+</html>
