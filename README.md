@@ -23,9 +23,10 @@ A phone app for logging sow breedings on a hog operation. It is a web page you a
 - **Helpful dates.** Worked out for you on each sow's page:
   - Next heat: 21 days after her last heat (first standing if you logged it, otherwise her first breeding or heat signs).
   - Due to farrow: 114 days after the first breeding of her latest heat.
-- **Coming in tab.** Sows due back in heat or due to farrow in the next 2 weeks, soonest first. Overdue ones stay on the list for a week. A bred sow drops off the "due back" list once she is a week past her date with no new heat logged.
+- **Coming in tab.** Sows due back in heat in the next 3 weeks (so a sow shows up the day she is bred, marked "Bred to" and the boar's name) and sows due to farrow in the next 2 weeks, soonest first. Overdue ones stay on the list for a week. A bred sow drops off the "due back" list once she is a week past her date with no new heat logged.
 - **Yellow bar.** When you open the app, a yellow bar at the top tells you how many sows are due now or by tomorrow. Tap it to see them. The app cannot send notifications while it is closed.
-- **Sow history.** Tap any entry in a list to open that sow's page, with every breeding and heat record she has and buttons to log another one for her.
+- **Edit from the list.** Tap any breeding or heat record in the main list, then choose **Edit** or **See her history**.
+- **Sow history.** Each sow has her own page, with every breeding and heat record she has and buttons to log another one for her.
 - **Edit or delete.** On the sow's page, tap an entry to change or delete it.
 
 Sows can be a number (118), a name (Rosie) or an ear notch (12-4).

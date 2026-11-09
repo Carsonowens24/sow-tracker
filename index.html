@@ -182,6 +182,7 @@ input[type="text"], input[type="search"], input[type="date"], input[type="time"]
 .dates span { color: var(--muted); font-size: 16px; }
 .dates b { text-align: right; font-variant-numeric: tabular-nums; }
 .dates small { display: block; font-weight: 400; color: var(--muted); font-size: 15px; }
+.hint { margin: -10px 0 0; color: var(--muted); font-size: 16px; }
 .version { text-align: center; color: var(--muted); font-size: 14px; margin: 0; }
 .empty {
   border: 2px dashed var(--line);
@@ -286,13 +287,13 @@ input[type="text"], input[type="search"], input[type="date"], input[type="time"]
   <div class="due" id="dueView" hidden>
     <h2>Due back in heat</h2>
     <ul class="list" id="dueHeat"></ul>
-    <p class="none" id="dueHeatNone">No sows due back in the next 2 weeks.</p>
+    <p class="none" id="dueHeatNone">No sows due back in the next 3 weeks.</p>
     <h2>Due to farrow</h2>
     <ul class="list" id="dueFarrow"></ul>
     <p class="none" id="dueFarrowNone">No sows due to farrow in the next 2 weeks.</p>
   </div>
   <div class="empty" id="nomatch" hidden><p>Nothing matches that search.</p></div>
-  <p class="version">Version 4</p>
+  <p class="version">Version 4.1</p>
 </div>
 
 <div class="wrap" id="sowView" hidden>
@@ -307,6 +308,7 @@ input[type="text"], input[type="search"], input[type="date"], input[type="time"]
     <button type="button" class="btn go" id="sowHeatBtn">Log heat</button>
   </div>
   <h2>History</h2>
+  <p class="hint">Tap an entry to edit or delete it.</p>
   <ul class="list" id="sowList"></ul>
 </div>
 
@@ -353,6 +355,20 @@ input[type="text"], input[type="search"], input[type="date"], input[type="time"]
       <button type="submit" class="btn go save" id="saveBtn">Save</button>
       <button type="button" class="btn" id="cancelBtn">Cancel</button>
       <button type="button" class="btn danger" id="deleteBtn" hidden>Delete this entry</button>
+    </div>
+  </form>
+</div>
+
+<div class="sheet" id="choice" hidden>
+  <form onsubmit="return false">
+    <div class="sowhead">
+      <span class="tag" id="choiceTag"></span>
+      <p id="choiceWhat"></p>
+    </div>
+    <div class="actions">
+      <button type="button" class="btn go save" id="choiceEdit">Edit breeding</button>
+      <button type="button" class="btn" id="choiceSow">See her history</button>
+      <button type="button" class="btn" id="choiceCancel">Cancel</button>
     </div>
   </form>
 </div>
@@ -616,6 +632,7 @@ input[type="text"], input[type="search"], input[type="date"], input[type="time"]
 
   /* ---------- Helpful dates ---------- */
   var HEAT_DAYS = 21, FARROW_DAYS = 114, LOOK_AHEAD = 14, KEEP_OVERDUE = 7;
+  var HEAT_LOOK_AHEAD = 21;   // so a sow shows on Coming in from the day she is bred
   function plusDays(iso, n) { return toISO(addDays(fromISO(iso), n)); }
   function daysUntil(iso) { return dayDiff(iso, toISO(new Date())); }
   function dueText(iso) {
@@ -653,12 +670,12 @@ input[type="text"], input[type="search"], input[type="date"], input[type="time"]
       };
     });
   }
-  function inWindow(iso) { var n = daysUntil(iso); return n <= LOOK_AHEAD && n >= -KEEP_OVERDUE; }
+  function inWindow(iso, ahead) { var n = daysUntil(iso); return n <= (ahead || LOOK_AHEAD) && n >= -KEEP_OVERDUE; }
   function comingIn() {
     var all = outlook();
     function byDate(f) { return function (a, b) { return a[f] < b[f] ? -1 : a[f] > b[f] ? 1 : 0; }; }
     return {
-      heat: all.filter(function (o) { return inWindow(o.nextHeat); }).sort(byDate('nextHeat')),
+      heat: all.filter(function (o) { return inWindow(o.nextHeat, HEAT_LOOK_AHEAD); }).sort(byDate('nextHeat')),
       farrow: all.filter(function (o) { return o.farrow && inWindow(o.farrow); }).sort(byDate('farrow'))
     };
   }
@@ -776,6 +793,30 @@ input[type="text"], input[type="search"], input[type="date"], input[type="time"]
     openSheet('heat', { sow: $('sowTag').textContent, type: '', date: toISO(new Date()) }, null);
   });
 
+  /* ---------- Tapped an entry in a main list: edit it, or open the sow ---------- */
+  var chosen = null;
+  function openChoice(r) {
+    chosen = r;
+    var heat = isHeat(r);
+    $('choiceTag').textContent = r.sow;
+    var w = $('choiceWhat');
+    w.textContent = '';
+    w.appendChild(el('b', '', heat ? STAGES[r.type] : 'Bred to ' + r.boar));
+    w.appendChild(document.createTextNode(niceDate(r.date) + (heat && niceTime(r) ? ', ' + niceTime(r) : '')));
+    $('choiceEdit').textContent = heat ? 'Edit heat record' : 'Edit breeding';
+    $('choice').hidden = false;
+  }
+  function closeChoice() { $('choice').hidden = true; }
+  $('choiceCancel').addEventListener('click', closeChoice);
+  $('choiceEdit').addEventListener('click', function () {
+    closeChoice();
+    if (chosen) openSheet(isHeat(chosen) ? 'heat' : 'breeding', chosen, null);
+  });
+  $('choiceSow').addEventListener('click', function () {
+    closeChoice();
+    if (chosen) openSow(chosen.sow);
+  });
+
   var tab = 'breeding';
   function setTab(t) {
     tab = t;
@@ -832,7 +873,7 @@ input[type="text"], input[type="search"], input[type="date"], input[type="time"]
       all = sorted(tab === 'heat' ? data.heats : data.breedings);
       rows = all.filter(match);
       rows.forEach(function (r) {
-        listEl.appendChild(makeRow(r, true, function () { openSow(r.sow); }));
+        listEl.appendChild(makeRow(r, true, function () { openChoice(r); }));
       });
     }
     $('empty').hidden = !(tab === 'breeding' && all.length === 0);
