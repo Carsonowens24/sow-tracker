@@ -64,10 +64,10 @@ body {
   flex-direction: column;
   gap: 18px;
 }
-h1 { font-size: 26px; margin: 0; letter-spacing: -0.01em; }
+h1 { font-size: 26px; margin: 0; letter-spacing: -0.01em; white-space: nowrap; }
 h2 { font-size: 20px; margin: 0; }
 .top { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
-.count { color: var(--muted); font-size: 16px; font-variant-numeric: tabular-nums; }
+.count { color: var(--muted); font-size: 16px; font-variant-numeric: tabular-nums; text-align: right; }
 
 button, input { font: inherit; color: inherit; }
 button { cursor: pointer; touch-action: manipulation; }
@@ -108,7 +108,7 @@ button { cursor: pointer; touch-action: manipulation; }
 
 .typed { display: flex; gap: 8px; width: 100%; }
 .typed input { flex: 1; min-width: 0; }
-input[type="text"], input[type="search"], input[type="date"] {
+input[type="text"], input[type="search"], input[type="date"], input[type="time"] {
   min-height: var(--tap);
   width: 100%;
   padding: 0 14px;
@@ -159,6 +159,17 @@ input[type="text"], input[type="search"], input[type="date"] {
 .sowhead p { margin: 0; color: var(--muted); font-size: 17px; min-width: 0; }
 .sowhead p b { display: block; color: var(--ink); font-size: 19px; }
 .row.plain { grid-template-columns: 1fr auto; }
+.pair { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; width: 100%; }
+.pair .btn { padding: 0 8px; }
+.byhand { width: 100%; display: flex; flex-direction: column; gap: 6px; }
+.byhand span { color: var(--muted); font-size: 15px; text-align: center; }
+.tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 0; border: 2px solid var(--line); border-radius: 14px; overflow: hidden; background: var(--surface); }
+.tab { min-height: 56px; border: 0; background: transparent; font-weight: 700; font-size: 19px; color: var(--muted); }
+.tab.on { background: var(--ink); color: var(--bg); }
+.stages { display: flex; flex-direction: column; gap: 8px; }
+.stage { min-height: var(--tap); border-radius: 14px; border: 2px solid var(--line); background: var(--surface); font-weight: 700; font-size: 19px; text-align: left; padding: 0 16px; }
+.stage.on, .chip.on { background: var(--ink); border-color: var(--ink); color: var(--bg); }
+.stages.missing .stage { border-color: var(--danger); }
 .version { text-align: center; color: var(--muted); font-size: 14px; margin: 0; }
 .empty {
   border: 2px dashed var(--line);
@@ -224,11 +235,20 @@ input[type="text"], input[type="search"], input[type="date"] {
       <input type="text" id="typedText" placeholder="Or type it here" autocomplete="off" autocapitalize="sentences" enterkeyhint="go" aria-label="Type a breeding">
       <button type="submit" class="btn go">Go</button>
     </form>
-    <button type="button" class="btn wide" id="manualBtn">Fill in by hand</button>
+    <div class="byhand">
+      <span>Or fill in by hand</span>
+      <div class="pair">
+        <button type="button" class="btn" id="manualBtn">Add breeding</button>
+        <button type="button" class="btn" id="manualHeatBtn">Add heat</button>
+      </div>
+    </div>
   </section>
 
-  <section class="listhead" aria-label="Breedings">
-    <h2>Breedings</h2>
+  <section class="listhead" aria-label="Records">
+    <div class="tabs">
+      <button type="button" class="tab on" id="tabBreed" aria-pressed="true">Breedings</button>
+      <button type="button" class="tab" id="tabHeat" aria-pressed="false">Heat</button>
+    </div>
     <input type="search" id="search" placeholder="Find a sow" autocomplete="off" aria-label="Find a sow">
   </section>
   <ul class="list" id="list"></ul>
@@ -240,8 +260,16 @@ input[type="text"], input[type="search"], input[type="date"] {
       <li>&ldquo;Bred sow 12-4 to Big Red yesterday&rdquo;</li>
     </ul>
   </div>
-  <div class="empty" id="nomatch" hidden><p>No breedings match that search.</p></div>
-  <p class="version">Version 2.1</p>
+  <div class="empty" id="emptyHeat" hidden>
+    <p>No heat records yet. Tap the microphone and try one of these:</p>
+    <ul>
+      <li>&ldquo;Sow 118 showing heat signs today&rdquo;</li>
+      <li>&ldquo;Sow 118 first standing this morning&rdquo;</li>
+      <li>&ldquo;118 went out yesterday&rdquo;</li>
+    </ul>
+  </div>
+  <div class="empty" id="nomatch" hidden><p>Nothing matches that search.</p></div>
+  <p class="version">Version 3</p>
 </div>
 
 <div class="wrap" id="sowView" hidden>
@@ -250,7 +278,10 @@ input[type="text"], input[type="search"], input[type="date"] {
     <span class="tag" id="sowTag"></span>
     <p id="sowSummary"></p>
   </div>
-  <button type="button" class="btn go wide" id="sowAddBtn">Log a breeding for her</button>
+  <div class="pair">
+    <button type="button" class="btn go" id="sowAddBtn">Log breeding</button>
+    <button type="button" class="btn go" id="sowHeatBtn">Log heat</button>
+  </div>
   <h2>History</h2>
   <ul class="list" id="sowList"></ul>
 </div>
@@ -263,23 +294,41 @@ input[type="text"], input[type="search"], input[type="date"] {
       <label for="fSow">Sow (number, name or ear notch)</label>
       <input type="text" id="fSow" autocomplete="off" autocapitalize="words">
     </div>
-    <div class="field">
+    <div class="field" id="stageField">
+      <label id="stageLabel">Heat stage</label>
+      <div class="stages" id="stages" role="group" aria-labelledby="stageLabel">
+        <button type="button" class="stage" data-stage="signs">Heat signs noticed</button>
+        <button type="button" class="stage" data-stage="standing">First standing</button>
+        <button type="button" class="stage" data-stage="out">Went out</button>
+      </div>
+    </div>
+    <div class="field" id="boarField">
       <label for="fBoar">Boar</label>
       <input type="text" id="fBoar" autocomplete="off" autocapitalize="words">
       <div class="chips" id="boarChips"></div>
     </div>
     <div class="field">
-      <label for="fDate">Date bred</label>
+      <label for="fDate" id="dateLabel">Date bred</label>
       <input type="date" id="fDate">
       <div class="chips">
         <button type="button" class="chip" data-day="0">Today</button>
         <button type="button" class="chip" data-day="-1">Yesterday</button>
       </div>
     </div>
+    <div class="field" id="timeField">
+      <label for="fTime">Time (optional)</label>
+      <input type="time" id="fTime">
+      <div class="chips" id="partChips">
+        <button type="button" class="chip" data-part="morning">Morning</button>
+        <button type="button" class="chip" data-part="afternoon">Afternoon</button>
+        <button type="button" class="chip" data-part="evening">Evening</button>
+        <button type="button" class="chip" data-part="">No time</button>
+      </div>
+    </div>
     <div class="actions">
       <button type="submit" class="btn go save" id="saveBtn">Save</button>
       <button type="button" class="btn" id="cancelBtn">Cancel</button>
-      <button type="button" class="btn danger" id="deleteBtn" hidden>Delete this breeding</button>
+      <button type="button" class="btn danger" id="deleteBtn" hidden>Delete this entry</button>
     </div>
   </form>
 </div>
@@ -401,48 +450,116 @@ input[type="text"], input[type="search"], input[type="date"] {
     return titleCase(tidy(s));
   }
 
-  function parseBreeding(raw, now) {
-    var got = extractDate(raw, now || new Date());
-    var t = tidy(got.rest);
-    var BRED = '(?:bred|bread|breed|brad)';
+  /* Time of day: an exact time ("at 6:30 am") or just morning / afternoon / evening */
+  function extractTime(text) {
+    var time = '', part = '', m, h, min;
+    if (/\bmorning\b/i.test(text)) part = 'morning';
+    else if (/\bafternoon\b/i.test(text)) part = 'afternoon';
+    else if (/\b(?:evening|tonight|last\s+night)\b/i.test(text)) part = 'evening';
+    m = /\b(?:(?:at|around|about)\s+)?(\d{1,2})(?::(\d{2}))?\s*(a\.?m\.?|p\.?m\.?)(?![a-z])/i.exec(text);
+    if (m) {
+      h = (+m[1] % 12) + (/p/i.test(m[3]) ? 12 : 0); min = +(m[2] || 0);
+    } else if ((m = /\b(?:at|around|about)\s+(\d{1,2}):(\d{2})\b/i.exec(text))) {
+      h = +m[1]; min = +m[2];
+      if (h < 12 && (part === 'afternoon' || part === 'evening')) h += 12;
+    } else if ((m = /\b(?:at|around|about)\s+noon\b/i.exec(text))) {
+      h = 12; min = 0;
+    }
+    if (m && h <= 23 && min <= 59) {
+      time = pad(h) + ':' + pad(min);
+      part = '';
+      text = text.slice(0, m.index) + ' ' + text.slice(m.index + m[0].length);
+    }
+    return { time: time, part: part, rest: text };
+  }
+
+  var STAGES = { signs: 'Heat signs noticed', standing: 'First standing', out: 'Went out' };
+  var PHRASES = [
+    ['out', ['went out of heat', 'out of standing heat', 'out of heat', 'went out', 'gone out', 'is out', 'was out',
+      'went off heat', 'went off', 'stopped standing', 'quit standing', 'done standing', 'no longer standing',
+      'not standing anymore', 'not standing', 'would not stand', "wouldn't stand", "won't stand", 'stopped']],
+    ['standing', ['first standing heat', 'standing heat', 'first standing', 'first stood', 'started standing',
+      'is standing', 'was standing', 'standing', 'stood', 'first stand', 'stands', 'locked up', 'locking up']],
+    ['signs', ['heat signs first noticed', 'first heat signs', 'heat signs', 'signs of heat', 'showing signs',
+      'showing heat', 'coming into heat', 'coming into estrus', 'coming in heat', 'coming in', 'came into heat',
+      'came in heat', 'came in', 'in heat', 'into estrus', 'in estrus', 'first noticed', 'signs']]
+  ];
+  function findPhrase(t, list) {
+    var best = null;
+    list.forEach(function (p) {
+      var m = new RegExp('\\b' + p.replace(/ /g, '\\s+') + '\\b', 'i').exec(t);
+      if (m && (!best || m[0].length > best[0].length)) best = m;
+    });
+    return best;
+  }
+
+  var BRED = '(?:bred|bread|breed|brad)';
+  function parseEntry(raw, now) {
+    var tm = extractTime(raw);
+    var got = extractDate(tm.rest, now || new Date());
+    var t = tidy(got.rest.replace(/\b(?:(?:in\s+the|this|that)\s+)?(?:morning|afternoon|evening)\b/gi, ' '));
+    var base = { date: got.date, dateSaid: got.said, time: tm.time, part: tm.part };
+
+    if (!new RegExp('\\b' + BRED + '\\b', 'i').test(t)) {
+      for (var i = 0; i < PHRASES.length; i++) {
+        var m = findPhrase(t, PHRASES[i][1]);
+        if (!m) continue;
+        var before = tidy(t.slice(0, m.index)), after = tidy(t.slice(m.index + m[0].length));
+        var sow = before || after.replace(/^(?:(?:for|on|with|in)\s+)+/i, '');
+        var prev;
+        do { prev = sow; sow = sow.replace(/\s+(?:is|was|has|had|been|just|now|first|started|she|in|into|went|showing|a|the)$/i, ''); } while (sow !== prev);
+        base.kind = 'heat'; base.type = PHRASES[i][0]; base.sow = cleanSow(sow);
+        return base;
+      }
+    }
+
     var TO = '(?:to|too|with|by)';
-    var sow = '', boar = '', m;
+    var sowB = '', boar = '', mm;
     // "bred sow 118 to Hang Time"
-    m = new RegExp('^(?:i\\s+|we\\s+)?' + BRED + '\\s+(.+?)\\s+' + TO + '\\s+(.+)$', 'i').exec(t);
+    mm = new RegExp('^(?:i\\s+|we\\s+)?' + BRED + '\\s+(.+?)\\s+' + TO + '\\s+(.+)$', 'i').exec(t);
     // "sow 118 was bred to Hang Time"
-    if (!m) m = new RegExp('^(.+?)\\s+(?:was\\s+|got\\s+|is\\s+)?' + BRED + '\\s+' + TO + '\\s+(.+)$', 'i').exec(t);
-    if (m) { sow = m[1]; boar = m[2]; }
-    else if ((m = /^(.+?)\s+to\s+(.+)$/i.exec(t))) { sow = m[1]; boar = m[2]; }
-    else { sow = t.replace(new RegExp('\\b(?:was\\s+)?' + BRED + '\\b', 'i'), ''); }
-    return { sow: cleanSow(sow), boar: cleanBoar(boar), date: got.date, dateSaid: got.said };
+    if (!mm) mm = new RegExp('^(.+?)\\s+(?:was\\s+|got\\s+|is\\s+)?' + BRED + '\\s+' + TO + '\\s+(.+)$', 'i').exec(t);
+    if (mm) { sowB = mm[1]; boar = mm[2]; }
+    else if ((mm = /^(.+?)\s+to\s+(.+)$/i.exec(t))) { sowB = mm[1]; boar = mm[2]; }
+    else { sowB = t.replace(new RegExp('\\b(?:was\\s+)?' + BRED + '\\b', 'i'), ''); }
+    base.kind = 'breeding'; base.sow = cleanSow(sowB); base.boar = cleanBoar(boar);
+    return base;
   }
 
   /* ---------- Storage (stays on this phone) ---------- */
   var KEY = 'sowtracker.v1';
-  var data = { breedings: [] };
+  var data = { breedings: [], heats: [] };
   var storageOK = true;
   function load() {
     try {
       var s = localStorage.getItem(KEY);
       if (s) { var d = JSON.parse(s); if (d && Array.isArray(d.breedings)) data = d; }
     } catch (e) { storageOK = false; }
+    if (!Array.isArray(data.heats)) data.heats = [];
   }
   function save() {
     try { localStorage.setItem(KEY, JSON.stringify(data)); return true; }
     catch (e) { storageOK = false; return false; }
   }
-  function key(s) { return s.toLowerCase().replace(/\s+/g, ' ').trim(); }
+  function key(s) { return String(s || '').toLowerCase().replace(/\s+/g, ' ').trim(); }
+  function isHeat(r) { return !!r.type; }
+  function everything() { return data.breedings.concat(data.heats); }
   // Reuse the spelling already on file, so "hang time" and "Hang Time" stay one boar.
   function matchKnown(value, field) {
-    var k = key(value);
-    for (var i = 0; i < data.breedings.length; i++) {
-      if (key(data.breedings[i][field]) === k) return data.breedings[i][field];
+    var k = key(value), all = field === 'sow' ? everything() : data.breedings;
+    for (var i = 0; i < all.length; i++) {
+      if (key(all[i][field]) === k) return all[i][field];
     }
     return value;
   }
-  function sorted() {
-    return data.breedings.slice().sort(function (a, b) {
-      return a.date < b.date ? 1 : a.date > b.date ? -1 : b.created - a.created;
+  var PART_AT = { morning: '08:00', afternoon: '14:00', evening: '20:00' };
+  function clock(r) { return r.time || PART_AT[r.part] || ''; }
+  function sorted(list) {
+    return list.slice().sort(function (a, b) {
+      if (a.date !== b.date) return a.date < b.date ? 1 : -1;
+      var ta = clock(a), tb = clock(b);
+      if (ta && tb && ta !== tb) return ta < tb ? 1 : -1;
+      return b.created - a.created;
     });
   }
   function recentBoars() {
@@ -465,6 +582,13 @@ input[type="text"], input[type="search"], input[type="date"] {
     return n;
   }
   function ordinal(n) { return n + (n === 2 ? 'nd' : n === 3 ? 'rd' : 'th'); }
+  function niceTime(r) {
+    if (r.time) {
+      var p = r.time.split(':'), h = +p[0];
+      return (h % 12 || 12) + ':' + p[1] + (h < 12 ? ' AM' : ' PM');
+    }
+    return r.part ? r.part.charAt(0).toUpperCase() + r.part.slice(1) : '';
+  }
 
   /* ---------- Screen ---------- */
   function $(id) { return document.getElementById(id); }
@@ -477,16 +601,22 @@ input[type="text"], input[type="search"], input[type="date"] {
     return e;
   }
 
-  // One line in a list. Main list shows the sow's tag; her own page leads with the date.
+  // One line in a list. Main lists show the sow's tag; her own page leads with what happened.
   function makeRow(r, withTag, onTap) {
     var li = el('li');
     var b = el('button', withTag ? 'row' : 'row plain');
     b.type = 'button';
     if (withTag) b.appendChild(el('span', 'tag', r.sow));
     var who = el('span', 'who');
-    who.appendChild(el('b', '', (withTag ? '' : 'Bred to ') + (r.boar || 'boar not set')));
-    var n = serviceNumber(r);
-    if (n > 1) who.appendChild(el('small', '', ordinal(n) + ' breeding this heat'));
+    if (isHeat(r)) {
+      who.appendChild(el('b', '', STAGES[r.type] || 'Heat'));
+      var tt = niceTime(r);
+      if (tt) who.appendChild(el('small', '', tt));
+    } else {
+      who.appendChild(el('b', '', (withTag ? '' : 'Bred to ') + (r.boar || 'boar not set')));
+      var n = serviceNumber(r);
+      if (n > 1) who.appendChild(el('small', '', ordinal(n) + ' breeding this heat'));
+    }
     b.appendChild(who);
     var when = el('span', 'when');
     when.appendChild(el('b', '', niceDate(r.date)));
@@ -513,39 +643,61 @@ input[type="text"], input[type="search"], input[type="date"] {
     $('mainView').hidden = false;
     window.scrollTo(0, mainScroll);
   }
+  function plural(n, word) { return n + ' ' + word + (n === 1 ? '' : 's'); }
   function renderSow() {
     if (currentSow == null) return;
     var k = key(currentSow);
-    var rows = sorted().filter(function (r) { return key(r.sow) === k; });
+    var rows = sorted(everything().filter(function (r) { return key(r.sow) === k; }));
     if (!rows.length) { closeSow(); return; }
     $('sowTag').textContent = rows[0].sow;
+    var breds = rows.filter(function (r) { return !isHeat(r); });
+    var heats = rows.length - breds.length;
     var sum = $('sowSummary');
     sum.textContent = '';
-    sum.appendChild(el('b', '', rows.length + (rows.length === 1 ? ' breeding' : ' breedings')));
-    sum.appendChild(document.createTextNode('Last bred ' + agoText(rows[0].date).toLowerCase() + ' to ' + rows[0].boar));
+    sum.appendChild(el('b', '', plural(breds.length, 'breeding') + ', ' + plural(heats, 'heat record')));
+    sum.appendChild(document.createTextNode(breds.length
+      ? 'Last bred ' + agoText(breds[0].date).toLowerCase() + ' to ' + breds[0].boar
+      : 'Not bred yet'));
     var list = $('sowList');
     list.textContent = '';
     rows.forEach(function (r) {
-      list.appendChild(makeRow(r, false, function () { openSheet(r, null); }));
+      list.appendChild(makeRow(r, false, function () { openSheet(isHeat(r) ? 'heat' : 'breeding', r, null); }));
     });
   }
   $('backBtn').addEventListener('click', closeSow);
   $('sowAddBtn').addEventListener('click', function () {
-    openSheet({ sow: $('sowTag').textContent, boar: '', date: toISO(new Date()) }, null);
+    openSheet('breeding', { sow: $('sowTag').textContent, boar: '', date: toISO(new Date()) }, null);
   });
+  $('sowHeatBtn').addEventListener('click', function () {
+    openSheet('heat', { sow: $('sowTag').textContent, type: '', date: toISO(new Date()) }, null);
+  });
+
+  var tab = 'breeding';
+  function setTab(t) {
+    tab = t;
+    $('tabBreed').classList.toggle('on', t === 'breeding');
+    $('tabHeat').classList.toggle('on', t === 'heat');
+    $('tabBreed').setAttribute('aria-pressed', t === 'breeding');
+    $('tabHeat').setAttribute('aria-pressed', t === 'heat');
+    render();
+  }
+  $('tabBreed').addEventListener('click', function () { setTab('breeding'); });
+  $('tabHeat').addEventListener('click', function () { setTab('heat'); });
 
   function render() {
     renderSow();
     var q = key(searchEl.value);
-    var all = sorted();
+    var all = sorted(tab === 'heat' ? data.heats : data.breedings);
     var rows = q ? all.filter(function (r) { return key(r.sow).indexOf(q) !== -1; }) : all;
     listEl.textContent = '';
     rows.forEach(function (r) {
       listEl.appendChild(makeRow(r, true, function () { openSow(r.sow); }));
     });
-    $('empty').hidden = all.length > 0;
+    $('empty').hidden = !(tab === 'breeding' && all.length === 0);
+    $('emptyHeat').hidden = !(tab === 'heat' && all.length === 0);
     $('nomatch').hidden = !(all.length > 0 && rows.length === 0);
-    $('count').textContent = all.length ? all.length + (all.length === 1 ? ' breeding' : ' breedings') : '';
+    var nb = data.breedings.length, nh = data.heats.length;
+    $('count').textContent = nb + nh ? plural(nb, 'breeding') + ' \u00B7 ' + nh + ' heat' : '';
   }
   searchEl.addEventListener('input', render);
 
@@ -557,18 +709,51 @@ input[type="text"], input[type="search"], input[type="date"] {
     toastTimer = setTimeout(function () { t.hidden = true; }, 2600);
   }
 
-  /* ---------- Confirm / edit sheet ---------- */
-  var editing = null;
-  function openSheet(record, heardText) {
+  /* ---------- Confirm / edit sheet (breedings and heat records) ---------- */
+  var editing = null, sheetKind = 'breeding', stage = '', part = '';
+  function setStage(v) {
+    stage = v;
+    Array.prototype.forEach.call(document.querySelectorAll('.stage'), function (b) {
+      b.classList.toggle('on', b.getAttribute('data-stage') === v);
+    });
+    if (v) $('stages').classList.remove('missing');
+  }
+  function setPart(v) {
+    part = v;
+    Array.prototype.forEach.call(document.querySelectorAll('[data-part]'), function (b) {
+      var p = b.getAttribute('data-part');
+      b.classList.toggle('on', p !== '' && p === v);
+    });
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('.stage'), function (b) {
+    b.addEventListener('click', function () { setStage(b.getAttribute('data-stage')); });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('[data-part]'), function (b) {
+    b.addEventListener('click', function () { $('fTime').value = ''; setPart(b.getAttribute('data-part')); });
+  });
+  $('fTime').addEventListener('input', function () { if ($('fTime').value) setPart(''); });
+
+  function openSheet(kind, record, heardText) {
+    sheetKind = kind;
+    var heat = kind === 'heat';
     editing = record && record.id ? record : null;
-    $('sheetTitle').textContent = editing ? 'Edit breeding' : heardText ? 'Check this breeding' : 'New breeding';
+    var what = heat ? 'heat record' : 'breeding';
+    $('sheetTitle').textContent = editing ? 'Edit ' + what : heardText ? 'Check this ' + what : 'New ' + what;
     $('heard').hidden = !heardText;
     $('heard').textContent = heardText ? 'Heard: “' + heardText + '”' : '';
     $('fSow').value = record ? record.sow : '';
-    $('fBoar').value = record ? record.boar : '';
+    $('fBoar').value = record && record.boar ? record.boar : '';
     $('fDate').value = record ? record.date : toISO(new Date());
+    $('fTime').value = record && record.time ? record.time : '';
+    setPart(record && !record.time && record.part ? record.part : '');
+    setStage(record && record.type ? record.type : '');
+    $('stages').classList.remove('missing');
     $('fSow').classList.remove('missing');
     $('fBoar').classList.remove('missing');
+    $('boarField').hidden = heat;
+    $('stageField').hidden = !heat;
+    $('timeField').hidden = !heat;
+    $('dateLabel').textContent = heat ? 'Date' : 'Date bred';
     $('deleteBtn').hidden = !editing;
     disarmDelete();
     var chips = $('boarChips');
@@ -589,34 +774,45 @@ input[type="text"], input[type="search"], input[type="date"] {
   });
   $('cancelBtn').addEventListener('click', closeSheet);
 
+  function newId() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+
   $('entryForm').addEventListener('submit', function (e) {
     e.preventDefault();
-    var sow = tidy($('fSow').value), boar = tidy($('fBoar').value), date = $('fDate').value;
+    var heat = sheetKind === 'heat';
+    var sow = tidy($('fSow').value), boar = tidy($('fBoar').value), date = $('fDate').value, time = $('fTime').value;
     $('fSow').classList.toggle('missing', !sow);
-    $('fBoar').classList.toggle('missing', !boar);
     if (!sow) { toast('Add the sow first'); $('fSow').focus(); return; }
-    if (!boar) { toast('Add the boar first'); $('fBoar').focus(); return; }
-    if (!date) { toast('Pick a date'); return; }
-    if (editing) {
-      if (currentSow != null && key(editing.sow) === key(currentSow)) currentSow = sow;   // follow a renamed sow
-      editing.sow = sow; editing.boar = boar; editing.date = date;
+    if (heat) {
+      $('stages').classList.toggle('missing', !stage);
+      if (!stage) { toast('Pick the heat stage'); return; }
     } else {
-      data.breedings.push({
-        id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
-        sow: matchKnown(sow, 'sow'), boar: matchKnown(boar, 'boar'), date: date, created: Date.now()
-      });
+      $('fBoar').classList.toggle('missing', !boar);
+      if (!boar) { toast('Add the boar first'); $('fBoar').focus(); return; }
     }
+    if (!date) { toast('Pick a date'); return; }
+    var rec = editing;
+    if (rec) {
+      if (currentSow != null && key(rec.sow) === key(currentSow)) currentSow = sow;   // follow a renamed sow
+      rec.sow = sow; rec.date = date;
+    } else {
+      rec = { id: newId(), sow: matchKnown(sow, 'sow'), date: date, created: Date.now() };
+      (heat ? data.heats : data.breedings).push(rec);
+    }
+    if (heat) { rec.type = stage; rec.time = time; rec.part = time ? '' : part; }
+    else { rec.boar = editing ? boar : matchKnown(boar, 'boar'); }
     var ok = save();
     closeSheet();
-    render();
-    toast(ok ? 'Saved: ' + sow + ' bred to ' + boar : 'Could not save to this phone. Check storage settings.');
+    if (currentSow == null && tab !== sheetKind) setTab(sheetKind); else render();
+    toast(!ok ? 'Could not save to this phone. Check storage settings.'
+      : heat ? 'Saved: ' + sow + ', ' + STAGES[stage].toLowerCase()
+      : 'Saved: ' + sow + ' bred to ' + boar);
   });
 
   var armed = false, armTimer;
   function disarmDelete() {
     armed = false; clearTimeout(armTimer);
     $('deleteBtn').classList.remove('armed');
-    $('deleteBtn').textContent = 'Delete this breeding';
+    $('deleteBtn').textContent = 'Delete this entry';
   }
   $('deleteBtn').addEventListener('click', function () {
     if (!editing) return;
@@ -629,21 +825,25 @@ input[type="text"], input[type="search"], input[type="date"] {
     }
     var id = editing.id;
     data.breedings = data.breedings.filter(function (r) { return r.id !== id; });
+    data.heats = data.heats.filter(function (r) { return r.id !== id; });
     save(); closeSheet(); render(); toast('Deleted');
   });
 
   /* ---------- Taking an entry (voice or typed) ---------- */
   var statusEl = $('status');
-  var HINT = 'Say: “Sow 118 bred to Hang Time today”';
+  var HINT = 'Say: “Sow 118 bred to Hang Time today” or “118 first standing this morning”';
   function setStatus(msg, cls) { statusEl.textContent = msg; statusEl.className = 'status' + (cls ? ' ' + cls : ''); }
 
   function handleText(text) {
     text = tidy(text);
     if (!text) return;
-    var p = parseBreeding(text, new Date());
+    var p = parseEntry(text, new Date());
     p.sow = matchKnown(p.sow, 'sow');
-    p.boar = matchKnown(p.boar, 'boar');
-    openSheet({ sow: p.sow, boar: p.boar, date: p.date }, text);
+    if (p.kind === 'heat') {
+      openSheet('heat', { sow: p.sow, type: p.type, date: p.date, time: p.time, part: p.part }, text);
+    } else {
+      openSheet('breeding', { sow: p.sow, boar: matchKnown(p.boar, 'boar'), date: p.date }, text);
+    }
   }
 
   $('typedForm').addEventListener('submit', function (e) {
@@ -654,7 +854,8 @@ input[type="text"], input[type="search"], input[type="date"] {
     $('typedText').blur();
     handleText(v);
   });
-  $('manualBtn').addEventListener('click', function () { openSheet(null, null); });
+  $('manualBtn').addEventListener('click', function () { openSheet('breeding', null, null); });
+  $('manualHeatBtn').addEventListener('click', function () { openSheet('heat', null, null); });
 
   var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   var rec = null, listening = false, heardSoFar = '';
@@ -708,9 +909,10 @@ input[type="text"], input[type="search"], input[type="date"] {
 
   /* ---------- Start ---------- */
   load();
+  setStatus(HINT);
   render();
   if (!storageOK) toast('This browser is not saving data. Turn off Private Browsing.');
-  window.__sow = { parseBreeding: parseBreeding };   // used by the automated checks
+  window.__sow = { parseEntry: parseEntry };   // used by the automated checks
 
   try {
     if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {

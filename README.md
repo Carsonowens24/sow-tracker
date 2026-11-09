@@ -2,7 +2,7 @@
 
 A phone app for logging sow breedings on a hog operation. It is a web page you add to your home screen, so there is nothing to install from an app store. Your records are saved on the phone itself and the app opens with no signal.
 
-## What works so far (steps 1 and 2)
+## What works so far (steps 1 to 3)
 
 - **Log a breeding by voice.** Tap the big microphone and say something like:
   - "Sow 118 was bred to Hang Time on July 26th"
@@ -13,12 +13,19 @@ A phone app for logging sow breedings on a hog operation. It is a web page you a
 - **Type it instead.** The "Or type it here" box understands the same sentences. On an iPhone you can tap the microphone key on the keyboard and talk, which also works where the big button does not.
 - **Fill in by hand.** A blank form with buttons for boars you have used recently.
 - **Breeding list.** Newest first. Type in "Find a sow" to filter. A sow bred more than once in the same week is marked "2nd breeding this heat".
-- **Sow history.** Tap any breeding in the list to open that sow's page, with every breeding she has had and a button to log another one for her.
+- **Heat tracking.** Log the three stages of a heat with the same microphone:
+  - "Sow 118 showing heat signs today" (heat signs noticed)
+  - "Sow 118 first standing this morning" (first standing)
+  - "118 went out yesterday" (went out)
+  - You can add a time ("at 6:30 am") or just say morning, afternoon or evening. Time is optional.
+  - Or tap **Add heat** to fill it in by hand.
+- **Breedings and Heat tabs.** The main list switches between the two. "Find a sow" filters whichever one is showing.
+- **Sow history.** Tap any entry in a list to open that sow's page, with every breeding and heat record she has and buttons to log another one for her.
 - **Edit or delete.** On the sow's page, tap an entry to change or delete it.
 
 Sows can be a number (118), a name (Rosie) or an ear notch (12-4).
 
-Still to come: heat cycle tracking, next-heat and farrowing dates, the "coming up" screen, and CSV export.
+Still to come: next-heat and farrowing dates, the "coming up" screen, and CSV export.
 
 ## Putting it on your iPhone
 
