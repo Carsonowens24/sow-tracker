@@ -80,6 +80,6 @@ When the app is updated, close it fully (swipe it away) and open it again while 
 | `index.html` | The whole app: screen layout, styling and logic |
 | `sw.js` | Keeps a copy on the phone so it opens offline |
 | `manifest.webmanifest` | Name, colors and icon for the home screen |
-| `icon-180.png`, `icon-512.png` | Home screen icons |
+| `app-icon-180.png`, `app-icon-512.png` | Home screen icons (the farm logo) |
 | `logo.jpg` | The farm logo shown on the Home screen |
 | `notify/` | The optional notification service (runs on Cloudflare) |

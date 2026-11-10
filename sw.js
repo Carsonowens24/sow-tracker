@@ -1,9 +1,9 @@
 // Keeps a copy of the app on the phone so it opens with no signal.
 // With a connection it loads the newest version; if the connection is
 // missing or slow (over 3 seconds) it opens the copy saved on the phone.
-const CACHE = 'sow-tracker-v3';
+const CACHE = 'sow-tracker-v4';
 const DATA = 'sow-tracker-data';   // the reminder list the app saves for notifications
-const FILES = ['./', 'index.html', 'manifest.webmanifest', 'icon-180.png', 'icon-512.png', 'logo.jpg'];
+const FILES = ['./', 'index.html', 'manifest.webmanifest', 'app-icon-180.png', 'app-icon-512.png', 'logo.jpg'];
 const WAIT_MS = 3000;
 
 self.addEventListener('install', (e) => {
@@ -57,7 +57,7 @@ self.addEventListener('push', (e) => {
     let body = 'Notifications are working. Nothing is due today.';
     if (due.length === 1) { title = due[0].title; body = due[0].body; }
     else if (due.length > 1) { title = due.length + ' due today'; body = due.map((x) => x.title).join('\n'); }
-    await self.registration.showNotification(title, { body, tag: 'sow-due-' + today, icon: 'icon-180.png' });
+    await self.registration.showNotification(title, { body, tag: 'sow-due-' + today, icon: 'app-icon-180.png' });
   })());
 });
 
