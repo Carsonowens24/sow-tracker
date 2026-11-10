@@ -1,0 +1,186 @@
+// Sow Tracker notification service.
+//
+// What it stores for each phone: the phone's push address, its time zone, and a
+// list of DATES on which something is due. It never receives sow names, boars or
+// records. The phone itself fills in the details when the notification arrives.
+//
+// Once an hour it checks each phone: if today (in that phone's time zone) is on
+// its list and it is 6 AM or later, it sends one silent "wake up" push. The app
+// on the phone then shows the notification with the sow details.
+
+import { DurableObject } from 'cloudflare:workers';
+
+const ALLOWED_ORIGINS = ['https://carsonowens24.github.io'];
+const CONTACT = 'https://carsonowens24.github.io/sow-tracker/';
+const MAX_PHONES = 50;
+const MAX_DATES = 800;
+
+/* ---------- small helpers ---------- */
+const enc = new TextEncoder();
+function b64url(bytes) {
+  let s = '';
+  new Uint8Array(bytes).forEach((b) => { s += String.fromCharCode(b); });
+  return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+function fromB64url(text) {
+  const bin = atob(text.replace(/-/g, '+').replace(/_/g, '/'));
+  return Uint8Array.from(bin, (c) => c.charCodeAt(0));
+}
+async function hash(text) {
+  return b64url(await crypto.subtle.digest('SHA-256', enc.encode(text))).slice(0, 32);
+}
+function validEndpoint(url) {
+  try {
+    const u = new URL(url);
+    return u.protocol === 'https:' && /(^|\.)push\.apple\.com$|(^|\.)googleapis\.com$|(^|\.)mozilla\.com$|(^|\.)windows\.com$/.test(u.hostname);
+  } catch (e) { return false; }
+}
+function localNow(tz) {
+  // Today's date and hour in the phone's own time zone
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', hourCycle: 'h23'
+  }).formatToParts(new Date());
+  const get = (t) => parts.find((p) => p.type === t).value;
+  return { date: `${get('year')}-${get('month')}-${get('day')}`, hour: Number(get('hour')) };
+}
+function validZone(tz) {
+  try { new Intl.DateTimeFormat('en-US', { timeZone: tz }); return true; } catch (e) { return false; }
+}
+
+/* ---------- storage and sending (one shared object) ---------- */
+export class Store extends DurableObject {
+  // The service's identity for push providers. Made once, then reused.
+  async keys() {
+    let k = await this.ctx.storage.get('vapid');
+    if (!k) {
+      const pair = await crypto.subtle.generateKey({ name: 'ECDSA', namedCurve: 'P-256' }, true, ['sign', 'verify']);
+      k = {
+        privateKey: b64url(await crypto.subtle.exportKey('pkcs8', pair.privateKey)),
+        publicKey: b64url(await crypto.subtle.exportKey('raw', pair.publicKey))
+      };
+      await this.ctx.storage.put('vapid', k);
+    }
+    return k;
+  }
+  async publicKey() { return (await this.keys()).publicKey; }
+
+  async saveSub(endpoint, dates, tz, hour) {
+    const id = 'sub:' + await hash(endpoint);
+    const existing = await this.ctx.storage.get(id);
+    if (!existing) {
+      const all = await this.ctx.storage.list({ prefix: 'sub:' });
+      if (all.size >= MAX_PHONES) return false;
+    }
+    await this.ctx.storage.put(id, { endpoint, dates, tz, hour, lastSent: existing ? existing.lastSent : '' });
+    return true;
+  }
+  async removeSub(endpoint) {
+    await this.ctx.storage.delete('sub:' + await hash(endpoint));
+  }
+
+  // Send one empty push. Returns the provider's HTTP status.
+  async push(endpoint) {
+    const k = await this.keys();
+    const key = await crypto.subtle.importKey('pkcs8', fromB64url(k.privateKey), { name: 'ECDSA', namedCurve: 'P-256' }, false, ['sign']);
+    const head = b64url(enc.encode(JSON.stringify({ typ: 'JWT', alg: 'ES256' })));
+    const body = b64url(enc.encode(JSON.stringify({
+      aud: new URL(endpoint).origin,
+      exp: Math.floor(Date.now() / 1000) + 12 * 3600,
+      sub: CONTACT
+    })));
+    const sig = b64url(await crypto.subtle.sign({ name: 'ECDSA', hash: 'SHA-256' }, key, enc.encode(head + '.' + body)));
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        Authorization: `vapid t=${head}.${body}.${sig}, k=${k.publicKey}`,
+        TTL: '43200',
+        Urgency: 'high'
+      }
+    });
+    return res.status;
+  }
+
+  async test(endpoint) {
+    const sub = await this.ctx.storage.get('sub:' + await hash(endpoint));
+    if (!sub) return 404;
+    try { return await this.push(sub.endpoint); } catch (e) { console.log('push failed:', e && e.message); return 0; }
+  }
+
+  // Runs every hour.
+  async sendDue() {
+    const all = await this.ctx.storage.list({ prefix: 'sub:' });
+    let sent = 0;
+    for (const [id, sub] of all) {
+      const now = localNow(sub.tz);
+      if (now.hour < sub.hour || sub.lastSent === now.date || !sub.dates.includes(now.date)) continue;
+      let status = 0;
+      try { status = await this.push(sub.endpoint); } catch (e) { console.log('push failed:', e && e.message); status = 0; }
+      if (status === 404 || status === 410) { await this.ctx.storage.delete(id); continue; }   // phone unsubscribed
+      if (status >= 200 && status < 300) {
+        sub.lastSent = now.date;
+        sub.dates = sub.dates.filter((d) => d >= now.date);
+        await this.ctx.storage.put(id, sub);
+        sent++;
+      }
+    }
+    return sent;
+  }
+}
+
+/* ---------- web addresses the app talks to ---------- */
+function cors(request) {
+  const origin = request.headers.get('Origin') || '';
+  const ok = ALLOWED_ORIGINS.includes(origin) || /^http:\/\/localhost(:\d+)?$/.test(origin);
+  return {
+    'Access-Control-Allow-Origin': ok ? origin : ALLOWED_ORIGINS[0],
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Max-Age': '86400',
+    Vary: 'Origin'
+  };
+}
+function reply(request, data, status = 200) {
+  return new Response(JSON.stringify(data), { status, headers: { 'Content-Type': 'application/json', ...cors(request) } });
+}
+
+export default {
+  async fetch(request, env) {
+    const url = new URL(request.url);
+    const store = env.STORE.get(env.STORE.idFromName('main'));
+    if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors(request) });
+
+    if (request.method === 'GET' && url.pathname === '/') return reply(request, { ok: true, service: 'sow-tracker-notify' });
+    if (request.method === 'GET' && url.pathname === '/key') return reply(request, { key: await store.publicKey() });
+
+    if (request.method === 'POST') {
+      let body;
+      try { body = await request.json(); } catch (e) { return reply(request, { error: 'bad request' }, 400); }
+      const endpoint = body && body.endpoint;
+      if (typeof endpoint !== 'string' || endpoint.length > 2000 || !validEndpoint(endpoint)) return reply(request, { error: 'bad endpoint' }, 400);
+
+      if (url.pathname === '/sync') {
+        const dates = Array.isArray(body.dates)
+          ? [...new Set(body.dates.filter((d) => typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d)))].sort().slice(0, MAX_DATES)
+          : [];
+        const tz = typeof body.tz === 'string' && validZone(body.tz) ? body.tz : 'America/Chicago';
+        const hour = Number.isInteger(body.hour) && body.hour >= 0 && body.hour <= 23 ? body.hour : 6;
+        const ok = await store.saveSub(endpoint, dates, tz, hour);
+        return ok ? reply(request, { ok: true, dates: dates.length }) : reply(request, { error: 'full' }, 429);
+      }
+      if (url.pathname === '/test') {
+        const status = await store.test(endpoint);
+        return reply(request, { ok: status >= 200 && status < 300, status });
+      }
+      if (url.pathname === '/off') {
+        await store.removeSub(endpoint);
+        return reply(request, { ok: true });
+      }
+    }
+    return reply(request, { error: 'not found' }, 404);
+  },
+
+  async scheduled(controller, env, ctx) {
+    const store = env.STORE.get(env.STORE.idFromName('main'));
+    ctx.waitUntil(store.sendDue());
+  }
+};

@@ -185,6 +185,7 @@ input[type="text"], input[type="search"], input[type="date"], input[type="time"]
 .hint { margin: -10px 0 0; color: var(--muted); font-size: 16px; }
 .tools { display: flex; flex-direction: column; gap: 10px; margin-top: 14px; padding-top: 18px; border-top: 2px solid var(--line); }
 .tools .hint { margin: 0 0 6px; }
+.tools-group { display: flex; flex-direction: column; gap: 10px; }
 .tools a { color: var(--go); font-weight: 700; }
 .version { text-align: center; color: var(--muted); font-size: 14px; margin: 0; }
 .empty {
@@ -304,11 +305,16 @@ input[type="text"], input[type="search"], input[type="date"], input[type="time"]
     <input type="file" id="restoreFile" accept=".csv,text/csv,text/comma-separated-values" hidden>
     <p class="hint">Restore adds any entries from an exported file that are not already here. It never deletes anything.</p>
     <h2>Reminders</h2>
+    <div class="tools-group" id="pushBox" hidden>
+      <button type="button" class="btn wide go" id="pushBtn">Turn on notifications</button>
+      <button type="button" class="btn wide" id="pushTestBtn" hidden>Send a test notification</button>
+      <p class="hint" id="pushNote"></p>
+    </div>
     <button type="button" class="btn wide" id="calBtn">Add reminders to Calendar</button>
     <p class="hint">Makes a calendar file with each sow's expected return to heat and farrowing date, with an alert at 6 AM that day.</p>
     <p class="hint" id="fileLink" hidden></p>
   </section>
-  <p class="version">Version 5</p>
+  <p class="version">Version 6</p>
 </div>
 
 <div class="wrap" id="sowView" hidden>
@@ -593,7 +599,7 @@ input[type="text"], input[type="search"], input[type="date"], input[type="time"]
     if (!Array.isArray(data.heats)) data.heats = [];
   }
   function save() {
-    try { localStorage.setItem(KEY, JSON.stringify(data)); return true; }
+    try { localStorage.setItem(KEY, JSON.stringify(data)); if (typeof syncPushSoon === 'function') syncPushSoon(); return true; }
     catch (e) { storageOK = false; return false; }
   }
   function key(s) { return String(s || '').toLowerCase().replace(/\s+/g, ' ').trim(); }
@@ -1287,11 +1293,110 @@ input[type="text"], input[type="search"], input[type="date"], input[type="time"]
     giveFile('sow-tracker-reminders.ics', 'text/calendar', ics.text, function () {});
   });
 
+  /* ---------- Notifications from the app ---------- */
+  // Address of the notification service. Left empty until the service is running.
+  var PUSH_URL = '';
+  var REMIND_HOUR = 6;   // 6 AM, phone's local time
+
+  // What is due and when. The details stay on the phone; only the dates are sent to the service.
+  function reminderList() {
+    var out = [];
+    outlook().forEach(function (o) {
+      var how = o.bred ? 'Bred to ' + o.bred.boar + ' on ' + shortDate(o.bred.date) : 'Not bred. Last heat ' + shortDate(o.lastHeat);
+      if (daysUntil(o.nextHeat) >= 0) out.push({ date: o.nextHeat, title: o.sow + ' due back in heat', body: how });
+      if (o.farrow && daysUntil(o.farrow) >= 0) out.push({ date: o.farrow, title: o.sow + ' due to farrow', body: how });
+    });
+    return out;
+  }
+  function pushReady() { return !!PUSH_URL && 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window; }
+  function post(path, body) {
+    return fetch(PUSH_URL + path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+      .then(function (r) { return r.json(); });
+  }
+  function getSub() {
+    return navigator.serviceWorker.ready.then(function (reg) { return reg.pushManager.getSubscription(); });
+  }
+  var syncTimer;
+  function syncPushSoon() { clearTimeout(syncTimer); syncTimer = setTimeout(syncPush, 1200); }
+  function syncPush() {
+    if (!pushReady()) return Promise.resolve();
+    var list = reminderList();
+    var keep = caches.open('sow-tracker-data').then(function (c) {
+      return c.put(new URL('reminders.json', location.href).href, new Response(JSON.stringify(list), { headers: { 'Content-Type': 'application/json' } }));
+    });
+    return keep.then(getSub).then(function (sub) {
+      if (!sub) return;
+      var dates = list.map(function (x) { return x.date; });
+      var tz = 'America/Chicago';
+      try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone || tz; } catch (e) {}
+      return post('/sync', { endpoint: sub.endpoint, dates: dates, tz: tz, hour: REMIND_HOUR });
+    }).catch(function () {});   // no signal: it will try again on the next save or open
+  }
+  function keyBytes(b64) {
+    var bin = atob(b64.replace(/-/g, '+').replace(/_/g, '/'));
+    var out = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+    return out;
+  }
+  function showPushState() {
+    var box = $('pushBox');
+    if (!PUSH_URL) { box.hidden = true; return; }
+    box.hidden = false;
+    if (!pushReady()) {
+      $('pushBtn').hidden = true; $('pushTestBtn').hidden = true;
+      $('pushNote').textContent = 'To get notifications, open Sow Tracker from its home screen icon.';
+      return;
+    }
+    getSub().then(function (sub) {
+      var on = !!sub && Notification.permission === 'granted';
+      $('pushBtn').hidden = false;
+      $('pushBtn').textContent = on ? 'Turn off notifications' : 'Turn on notifications';
+      $('pushBtn').classList.toggle('go', !on);
+      $('pushTestBtn').hidden = !on;
+      $('pushNote').textContent = on
+        ? 'On. You get a notification at 6 AM on the day a sow is due back in heat or due to farrow.'
+        : 'Get a notification at 6 AM on the day a sow is due, even when the app is closed.';
+    }).catch(function () {});
+  }
+  $('pushBtn').addEventListener('click', function () {
+    if (!pushReady()) return;
+    getSub().then(function (sub) {
+      if (sub && Notification.permission === 'granted') {
+        var endpoint = sub.endpoint;
+        return sub.unsubscribe().then(function () { return post('/off', { endpoint: endpoint }).catch(function () {}); })
+          .then(function () { toast('Notifications turned off'); showPushState(); });
+      }
+      return Notification.requestPermission().then(function (p) {
+        if (p !== 'granted') {
+          $('pushNote').textContent = 'Notifications are blocked. Allow them in the iPhone Settings app: Notifications, then Sow Tracker.';
+          return;
+        }
+        return fetch(PUSH_URL + '/key').then(function (r) { return r.json(); }).then(function (k) {
+          return navigator.serviceWorker.ready.then(function (reg) {
+            return reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: keyBytes(k.key) });
+          });
+        }).then(syncPush).then(function () { toast('Notifications turned on'); showPushState(); });
+      });
+    }).catch(function () {
+      $('pushNote').textContent = 'Could not turn on notifications. Check your connection and try again.';
+    });
+  });
+  $('pushTestBtn').addEventListener('click', function () {
+    syncPush().then(getSub).then(function (sub) {
+      if (!sub) { showPushState(); return; }
+      return post('/test', { endpoint: sub.endpoint }).then(function (r) {
+        toast(r && r.ok ? 'Sent. It should arrive in a few seconds.' : 'The test could not be sent (code ' + (r && r.status) + ')');
+      });
+    }).catch(function () { toast('Could not reach the notification service'); });
+  });
+
   /* ---------- Start ---------- */
   load();
   setStatus(HINT);
   render();
   showLastBackup();
+  showPushState();
+  syncPush();
   if (!storageOK) toast('This browser is not saving data. Turn off Private Browsing.');
   window.__sow = { parseEntry: parseEntry, buildCSV: buildCSV, buildICS: buildICS, importCSV: importCSV };   // used by the automated checks
 

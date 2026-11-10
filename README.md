@@ -29,6 +29,7 @@ A phone app for logging sow breedings on a hog operation. It is a web page you a
 - **Export spreadsheet (CSV).** At the bottom of the main screen. Makes a file with every breeding and heat record that opens in Excel, Numbers or Google Sheets. On an iPhone the Share sheet opens: choose **Save to Files** or **Mail** to send it to yourself.
 - **Restore from a spreadsheet.** Pick a file you exported earlier and the app adds back any entries that are missing. It never deletes anything, so it is safe to run twice.
 - **Calendar reminders.** Makes a calendar file with each sow's expected return to heat and farrowing date, with an alert at 6 AM that day. Once the events are in your iPhone Calendar, the phone reminds you even when the app is closed. If a sow's dates change later, the old calendar events stay until you delete them in Calendar.
+- **Notifications (optional).** Once the notification service in the `notify` folder is running, a **Turn on notifications** button appears at the bottom of the main screen. You then get a notification at 6 AM on the day a sow is due back in heat or due to farrow, even with the app closed. Only the due dates are sent to the service; sow names and records stay on the phone.
 - **Sow history.** Each sow has her own page, with every breeding and heat record she has and buttons to log another one for her.
 - **Edit or delete.** On the sow's page, tap an entry to change or delete it.
 
@@ -73,3 +74,4 @@ When the app is updated, close it fully (swipe it away) and open it again while 
 | `sw.js` | Keeps a copy on the phone so it opens offline |
 | `manifest.webmanifest` | Name, colors and icon for the home screen |
 | `icon-180.png`, `icon-512.png` | Home screen icons |
+| `notify/` | The optional notification service (runs on Cloudflare) |
