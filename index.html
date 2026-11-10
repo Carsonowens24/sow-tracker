@@ -194,6 +194,7 @@ input[type="text"], input[type="search"], input[type="date"], input[type="time"]
 .tools { display: flex; flex-direction: column; gap: 10px; margin-top: 14px; padding-top: 18px; border-top: 2px solid var(--line); }
 .tools .hint { margin: 0 0 6px; }
 .tools-group { display: flex; flex-direction: column; gap: 10px; }
+.code { margin: 0; padding: 14px; text-align: center; font-size: 26px; font-weight: 800; letter-spacing: 0.06em; font-variant-numeric: tabular-nums; background: var(--surface); border: 2px dashed var(--line); border-radius: 14px; user-select: all; -webkit-user-select: all; }
 .tools a { color: var(--ink); font-weight: 700; }
 .logo { background: #ffffff; border-radius: 14px; padding: 10px; border: 2px solid var(--line); }
 .logo img { display: block; width: 100%; height: auto; border-radius: 6px; }
@@ -347,6 +348,25 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
     <button type="button" class="btn wide" id="restoreBtn">Restore from a spreadsheet</button>
     <input type="file" id="restoreFile" accept=".csv,text/csv,text/comma-separated-values" hidden>
     <p class="hint">Restore adds any entries from an exported file that are not already here. It never deletes anything.</p>
+    <div class="tools-group" id="shareBox" hidden>
+      <h2>Sharing</h2>
+      <div class="tools-group" id="shareOff">
+        <p class="hint">Keep the same records on more than one phone. Start sharing on one phone, then enter its code on the others.</p>
+        <button type="button" class="btn wide go" id="shareStartBtn">Start sharing from this phone</button>
+        <form class="typed" id="shareJoinForm">
+          <input type="text" id="shareJoinCode" placeholder="Enter a share code" autocomplete="off" autocapitalize="characters" aria-label="Share code">
+          <button type="submit" class="btn">Join</button>
+        </form>
+        <p class="hint" id="shareMsg" role="status"></p>
+      </div>
+      <div class="tools-group" id="shareOn" hidden>
+        <p class="hint" id="shareNote"></p>
+        <p class="code" id="shareCode"></p>
+        <button type="button" class="btn wide go" id="shareSendBtn">Send code to another phone</button>
+        <button type="button" class="btn wide" id="shareSyncBtn">Sync now</button>
+        <button type="button" class="btn wide" id="shareStopBtn">Stop sharing on this phone</button>
+      </div>
+    </div>
     <h2>Reminders</h2>
     <div class="tools-group" id="pushBox" hidden>
       <button type="button" class="btn wide go" id="pushBtn">Turn on notifications</button>
@@ -357,7 +377,7 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
     <p class="hint">Makes a calendar file with each sow's expected return to heat and farrowing date, with an alert at 6 AM that day.</p>
     <p class="hint" id="fileLink" hidden></p>
   </section>
-  <p class="version" id="version">Version 8</p>
+  <p class="version" id="version">Version 9</p>
 </div>
 
 <div class="wrap" id="sowView" hidden>
@@ -648,9 +668,16 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
       if (s) { var d = JSON.parse(s); if (d && Array.isArray(d.breedings)) data = d; }
     } catch (e) { storageOK = false; }
     if (!Array.isArray(data.heats)) data.heats = [];
+    if (!Array.isArray(data.gone)) data.gone = [];   // deleted entries, remembered so sharing does not bring them back
   }
-  function save() {
-    try { localStorage.setItem(KEY, JSON.stringify(data)); if (typeof syncPushSoon === 'function') syncPushSoon(); return true; }
+  // fromShare: the change came from another phone, so do not send it straight back
+  function save(fromShare) {
+    try {
+      localStorage.setItem(KEY, JSON.stringify(data));
+      if (typeof syncPushSoon === 'function') syncPushSoon();
+      if (!fromShare && typeof markChanged === 'function') markChanged();
+      return true;
+    }
     catch (e) { storageOK = false; return false; }
   }
   function key(s) { return String(s || '').toLowerCase().replace(/\s+/g, ' ').trim(); }
@@ -1086,6 +1113,7 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
     }
     if (heat) { rec.type = stage; rec.time = time; rec.part = time ? '' : part; }
     else { rec.boar = editing ? boar : matchKnown(boar, 'boar'); }
+    rec.updated = Date.now();
     var ok = save();
     closeSheet();
     render();
@@ -1113,6 +1141,7 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
     var id = editing.id;
     data.breedings = data.breedings.filter(function (r) { return r.id !== id; });
     data.heats = data.heats.filter(function (r) { return r.id !== id; });
+    data.gone.push({ id: id, updated: Date.now() });
     save(); closeSheet(); render(); toast('Deleted');
   });
 
@@ -1275,7 +1304,7 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
         rec = { sow: sow, boar: tidy(get(r, 'Boar')), date: date };
       } else { bad++; return; }
       if (everything().some(function (o) { return sameEntry(o, rec); })) { skipped++; return; }
-      rec.id = newId(); rec.created = stamp++;
+      rec.id = newId(); rec.created = stamp++; rec.updated = rec.created;
       (isHeat(rec) ? data.heats : data.breedings).push(rec);
       added++;
     });
@@ -1471,6 +1500,146 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
     }).catch(function () { toast('Could not reach the notification service'); });
   });
 
+  /* ---------- Sharing between phones ---------- */
+  // Phones that enter the same share code keep one combined set of records through the online service.
+  // Each phone still keeps its own full copy, so the app works with no signal and catches up later.
+  var SHARE_KEY = KEY + '.share';
+  var share = null;        // { code, ver, last, dirty }
+  var shareBusy = false, shareSeq = 0;
+  function loadShare() {
+    try { share = JSON.parse(localStorage.getItem(SHARE_KEY) || 'null'); } catch (e) { share = null; }
+    if (share && !share.code) share = null;
+  }
+  function saveShare() {
+    try { if (share) localStorage.setItem(SHARE_KEY, JSON.stringify(share)); else localStorage.removeItem(SHARE_KEY); } catch (e) {}
+  }
+  function stampOf(r) { return r.updated || r.created || 0; }
+  function newCode() {
+    var abc = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789', out = '', n = new Uint8Array(12);
+    crypto.getRandomValues(n);
+    for (var i = 0; i < 12; i++) out += abc[n[i] % 32];
+    return out;
+  }
+  function prettyCode(c) { return c.slice(0, 4) + '-' + c.slice(4, 8) + '-' + c.slice(8, 12); }
+  function cleanCode(v) {
+    var c = String(v || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+    return c.length === 12 ? c : '';
+  }
+  function markChanged() {
+    shareSeq++;
+    if (share) { share.dirty = true; saveShare(); shareSoon(); }
+  }
+  var shareTimer;
+  function shareSoon() { clearTimeout(shareTimer); shareTimer = setTimeout(syncShare, 1500); }
+  function busyEditing() { return !$('sheet').hidden || !$('choice').hidden; }
+
+  // Take what the service sent and fold it into this phone's copy. Newest change wins.
+  function applyShared(records) {
+    var mine = {}, changed = false;
+    everything().forEach(function (r) { mine[r.id] = r; });
+    (data.gone || []).forEach(function (g) { mine[g.id] = { id: g.id, deleted: true, updated: g.updated }; });
+    records.forEach(function (r) {
+      if (!r || !r.id) return;
+      var have = mine[r.id];
+      if (!have || stampOf(r) > stampOf(have)) { mine[r.id] = r; changed = true; }
+    });
+    if (!changed) return false;
+    data.breedings = []; data.heats = []; data.gone = [];
+    Object.keys(mine).forEach(function (id) {
+      var r = mine[id];
+      if (r.deleted) data.gone.push({ id: r.id, updated: r.updated });
+      else if (isHeat(r)) data.heats.push(r);
+      else data.breedings.push(r);
+    });
+    return true;
+  }
+  function syncShare() {
+    if (!share || !PUSH_URL || shareBusy) return Promise.resolve(false);
+    if (busyEditing()) { shareSoon(); return Promise.resolve(false); }
+    shareBusy = true;
+    var seqAtStart = shareSeq;
+    var body = { code: share.code, ver: share.ver || 0 };
+    if (share.dirty || !share.ver) {
+      body.records = everything().map(function (r) { if (!r.updated) r.updated = r.created || 1; return r; })
+        .concat((data.gone || []).map(function (g) { return { id: g.id, deleted: true, updated: g.updated }; }));
+    }
+    return post('/share/sync', body).then(function (res) {
+      shareBusy = false;
+      if (!share) return false;
+      if (res && res.error === 'no farm') { share.missing = true; saveShare(); showShareState(); return false; }
+      if (!res || !res.ok) return false;
+      if (busyEditing()) { shareSoon(); return false; }   // do not swap records under an open edit screen
+      if (!res.same) {
+        if (applyShared(res.records || [])) { save(true); render(); showLastBackup(); }
+        share.ver = res.ver;
+      }
+      if (shareSeq === seqAtStart) share.dirty = false; else shareSoon();
+      share.last = Date.now(); share.missing = false;
+      saveShare(); showShareState();
+      return true;
+    }).catch(function () { shareBusy = false; return false; });   // no signal: try again later
+  }
+  function agoShort(ts) {
+    var m = Math.round((Date.now() - ts) / 60000);
+    if (m < 1) return 'just now';
+    if (m < 60) return m + ' min ago';
+    if (m < 1440) return Math.round(m / 60) + ' hr ago';
+    return Math.round(m / 1440) + ' days ago';
+  }
+  function showShareState() {
+    var box = $('shareBox');
+    if (!PUSH_URL) { box.hidden = true; return; }
+    box.hidden = false;
+    $('shareOff').hidden = !!share;
+    $('shareOn').hidden = !share;
+    if (!share) return;
+    $('shareCode').textContent = prettyCode(share.code);
+    $('shareNote').textContent = share.missing ? 'That share code no longer works. Stop sharing, then start again.'
+      : share.last ? 'Sharing is on. Last synced ' + agoShort(share.last) + '.'
+      : 'Sharing is on. Waiting for a connection to sync.';
+  }
+  $('shareStartBtn').addEventListener('click', function () {
+    var code = newCode();
+    $('shareMsg').textContent = 'Setting up...';
+    post('/share/create', { code: code }).then(function (r) {
+      if (!r || !r.ok) throw new Error('failed');
+      share = { code: code, ver: 0, last: 0, dirty: true };
+      saveShare(); $('shareMsg').textContent = ''; showShareState();
+      return syncShare();
+    }).catch(function () { $('shareMsg').textContent = 'Could not reach the sharing service. Check your connection and try again.'; });
+  });
+  $('shareJoinForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var code = cleanCode($('shareJoinCode').value);
+    if (!code) { $('shareMsg').textContent = 'A share code has 12 letters and numbers, like ABCD-EFGH-JKLM.'; return; }
+    $('shareMsg').textContent = 'Joining...';
+    post('/share/sync', { code: code, ver: 0 }).then(function (r) {
+      if (r && r.error === 'no farm') { $('shareMsg').textContent = 'No shared records found for that code. Check it and try again.'; return; }
+      if (!r || !r.ok) throw new Error('failed');
+      share = { code: code, ver: 0, last: 0, dirty: true };
+      saveShare(); $('shareJoinCode').value = ''; $('shareMsg').textContent = ''; showShareState();
+      return syncShare().then(function () { toast('Joined. Records are now shared.'); });
+    }).catch(function () { $('shareMsg').textContent = 'Could not reach the sharing service. Check your connection and try again.'; });
+  });
+  $('shareSendBtn').addEventListener('click', function () {
+    if (!share) return;
+    var text = 'Sow Tracker share code: ' + prettyCode(share.code) + '\nOpen Sow Tracker, go to Sharing at the bottom of Home, and enter this code under "Join".';
+    if (navigator.share) { navigator.share({ text: text }).catch(function () {}); return; }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function () { toast('Code copied'); }, function () { toast('Read the code out from the screen'); });
+    } else toast('Read the code out from the screen');
+  });
+  $('shareSyncBtn').addEventListener('click', function () {
+    if (share) { share.dirty = true; }
+    syncShare().then(function (ok) { toast(ok ? 'Synced' : 'Could not sync right now. It will try again.'); });
+  });
+  $('shareStopBtn').addEventListener('click', function () {
+    share = null; saveShare(); showShareState();
+    toast('Sharing stopped on this phone. Your records are still here.');
+  });
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) syncShare(); });
+  setInterval(function () { if (!document.hidden) { syncShare(); showShareState(); } }, 120000);
+
   /* ---------- Start ---------- */
   load();
   setStatus(HINT);
@@ -1478,6 +1647,9 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
   showLastBackup();
   showPushState();
   syncPush();
+  loadShare();
+  showShareState();
+  syncShare();
   if (!storageOK) toast('This browser is not saving data. Turn off Private Browsing.');
   window.__sow = { parseEntry: parseEntry, buildCSV: buildCSV, buildICS: buildICS, importCSV: importCSV };   // used by the automated checks
 

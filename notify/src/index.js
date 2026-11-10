@@ -1,4 +1,4 @@
-// Sow Tracker notification service.
+// Sow Tracker online service: notifications, and sharing records between phones.
 //
 // What it stores for each phone: the phone's push address, its time zone, and a
 // list of DATES on which something is due. It never receives sow names, boars or
@@ -127,6 +127,56 @@ export class Store extends DurableObject {
   }
 }
 
+/* ---------- sharing between phones (one object per farm) ---------- */
+// Phones that know the same share code keep one combined set of records here.
+// For each record the newest change wins, and a deleted record is remembered as
+// deleted so it does not come back from another phone.
+const MAX_RECORDS = 20000;
+function cleanRecord(r) {
+  if (!r || typeof r !== 'object' || Array.isArray(r)) return null;
+  if (typeof r.id !== 'string' || !/^[a-z0-9]{4,40}$/i.test(r.id)) return null;
+  if (typeof r.updated !== 'number' || !isFinite(r.updated)) return null;
+  if (JSON.stringify(r).length > 1500) return null;
+  return r;
+}
+export class Farm extends DurableObject {
+  async create() {
+    if (!(await this.ctx.storage.get('meta'))) await this.ctx.storage.put('meta', { created: Date.now(), ver: 1 });
+    return true;
+  }
+  // records: everything the phone has (or null if it has nothing new). ver: the version the phone last saw.
+  async sync(records, ver) {
+    const meta = await this.ctx.storage.get('meta');
+    if (!meta) return null;                                   // no farm with this code
+    if (!records && ver === meta.ver) return { same: true, ver: meta.ver };
+    const all = await this.ctx.storage.list({ prefix: 'r:' });
+    const changed = {};
+    let count = all.size;
+    for (const raw of records || []) {
+      const r = cleanRecord(raw);
+      if (!r) continue;
+      const have = all.get('r:' + r.id);
+      if (have && have.updated >= r.updated) continue;
+      if (!have && count >= MAX_RECORDS) continue;
+      if (!have) count++;
+      changed['r:' + r.id] = r;
+      all.set('r:' + r.id, r);
+    }
+    const keys = Object.keys(changed);
+    for (let i = 0; i < keys.length; i += 100) {
+      const batch = {};
+      keys.slice(i, i + 100).forEach((k) => { batch[k] = changed[k]; });
+      await this.ctx.storage.put(batch);
+    }
+    if (keys.length) { meta.ver++; await this.ctx.storage.put('meta', meta); }
+    return { ver: meta.ver, records: [...all.values()] };
+  }
+}
+function shareCode(v) {
+  const code = String(v || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  return /^[A-Z0-9]{12}$/.test(code) ? code : null;
+}
+
 /* ---------- web addresses the app talks to ---------- */
 function cors(request) {
   const origin = request.headers.get('Origin') || '';
@@ -155,6 +205,15 @@ export default {
     if (request.method === 'POST') {
       let body;
       try { body = await request.json(); } catch (e) { return reply(request, { error: 'bad request' }, 400); }
+      if (url.pathname === '/share/create' || url.pathname === '/share/sync') {
+        const code = shareCode(body && body.code);
+        if (!code) return reply(request, { error: 'bad code' }, 400);
+        const farm = env.FARM.get(env.FARM.idFromName('farm:' + code));
+        if (url.pathname === '/share/create') { await farm.create(); return reply(request, { ok: true }); }
+        const records = Array.isArray(body.records) ? body.records.slice(0, MAX_RECORDS) : null;
+        const out = await farm.sync(records, Number(body.ver) || 0);
+        return out ? reply(request, { ok: true, ...out }) : reply(request, { error: 'no farm' }, 404);
+      }
       const endpoint = body && body.endpoint;
       if (typeof endpoint !== 'string' || endpoint.length > 2000 || !validEndpoint(endpoint)) return reply(request, { error: 'bad endpoint' }, 400);
 

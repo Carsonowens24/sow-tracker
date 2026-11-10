@@ -1,6 +1,12 @@
-# Sow Tracker notification service
+# Sow Tracker online service
 
-A small service that runs on Cloudflare's free plan and sends Sow Tracker's notifications.
+A small service that runs on Cloudflare's free plan. It does two optional jobs: sending Sow Tracker's notifications, and sharing records between phones.
+
+## Sharing
+
+When sharing is turned on in the app, each phone sends its records here under a 12-character share code, and the service hands back the combined set. For each entry the most recent change wins, and deleted entries are remembered so they do not come back from another phone. Records are only stored here if sharing is turned on.
+
+## Notifications
 
 - The app sends it the phone's push address, its time zone, and the **dates** on which something is due. It never receives sow names, boars or records.
 - Once an hour it checks whether today is on a phone's list. If so, and it is 6 AM or later there, it sends one "wake up" push. The app on the phone then shows the notification with the sow details, which never left the phone.

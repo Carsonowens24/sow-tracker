@@ -1,10 +1,10 @@
 {
-  // The small online service that sends Sow Tracker's notifications.
+  // The small online service behind Sow Tracker: notifications and sharing between phones.
   "name": "sow-tracker",
   "main": "notify/src/index.js",
   "compatibility_date": "2025-10-01",
   // Wakes up once an hour to see whether any phone has a sow due today.
   "triggers": { "crons": ["0 * * * *"] },
-  "durable_objects": { "bindings": [{ "name": "STORE", "class_name": "Store" }] },
-  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Store"] }]
+  "durable_objects": { "bindings": [{ "name": "STORE", "class_name": "Store" }, { "name": "FARM", "class_name": "Farm" }] },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Store"] }, { "tag": "v2", "new_sqlite_classes": ["Farm"] }]
 }

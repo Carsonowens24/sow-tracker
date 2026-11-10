@@ -43,6 +43,7 @@ How to read the colors:
 - **Restore from a spreadsheet.** Pick a file you exported earlier and the app adds back any entries that are missing. It never deletes anything, so it is safe to run twice.
 - **Calendar reminders.** Makes a calendar file with each sow's expected return to heat and farrowing date, with an alert at 6 AM that day. Once the events are in your iPhone Calendar, the phone reminds you even when the app is closed. If a sow's dates change later, the old calendar events stay until you delete them in Calendar.
 - **Notifications (optional).** Once the notification service in the `notify` folder is running, a **Turn on notifications** button appears at the bottom of the main screen. You then get a notification at 6 AM on the day a sow is due back in heat or due to farrow, even with the app closed. Only the due dates are sent to the service; sow names and records stay on the phone.
+- **Sharing between phones (optional).** At the bottom of Home, under **Sharing**. Tap **Start sharing from this phone** to get a 12-character share code, then on the other phone enter that code and tap **Join**. Both phones then show the same records. Each phone keeps its own full copy, so the app still works with no signal and catches up when it reconnects. If the same entry is changed on two phones, the most recent change wins. Anyone with the share code can see and change the records, so only give it to people who should have them.
 - **Sow history.** Each sow has her own page, with every breeding and heat record she has and buttons to log another one for her.
 - **Edit or delete.** On the sow's page, tap an entry to change or delete it.
 
@@ -76,8 +77,8 @@ When the app is updated, close it fully (swipe it away) and open it again while 
 ## Good to know
 
 - **Voice and signal.** The big microphone button may need a signal to work. If it does not respond, use the text box and the keyboard's microphone key.
-- **Your records live only on this phone.** They are not sent anywhere. Deleting the home screen icon or clearing Safari's website data erases them, so export the spreadsheet regularly and keep the file somewhere off the phone (email it to yourself). The app shows when you last exported.
-- **Public repository.** Only the app's code is public. Your breeding records never leave your phone.
+- **Your records live on this phone.** They are not sent anywhere unless you turn on sharing; with sharing on, a copy is also kept in the online service so the other phones can get it. Deleting the home screen icon or clearing Safari's website data erases them, so export the spreadsheet regularly and keep the file somewhere off the phone (email it to yourself). The app shows when you last exported.
+- **Public repository.** Only the app's code is public. Your breeding records are never in it.
 
 ## Files
 
@@ -88,4 +89,4 @@ When the app is updated, close it fully (swipe it away) and open it again while 
 | `manifest.webmanifest` | Name, colors and icon for the home screen |
 | `app-icon-180.png`, `app-icon-512.png` | Home screen icons (the farm logo) |
 | `logo.jpg` | The farm logo shown on the Home screen |
-| `notify/` | The optional notification service (runs on Cloudflare) |
+| `notify/`, `wrangler.jsonc` | The optional online service for notifications and sharing (runs on Cloudflare) |
