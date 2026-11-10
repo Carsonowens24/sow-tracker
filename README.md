@@ -4,6 +4,13 @@ A phone app for logging sow breedings on a hog operation. It is a web page you a
 
 ## What it does
 
+The app has four screens. Switch between them with the bar at the bottom.
+
+- **Home:** the farm logo, the microphone, and backup and reminder buttons.
+- **Breeding:** every breeding, newest first, with an **Add breeding** button.
+- **Heat:** every heat record, with an **Add heat** button.
+- **Coming in:** sows due back in heat or due to farrow.
+
 - **Log a breeding by voice.** Tap the big microphone and say something like:
   - "Sow 118 was bred to Hang Time on July 26th"
   - "Rosie bred to Hang Time today"
@@ -74,4 +81,5 @@ When the app is updated, close it fully (swipe it away) and open it again while 
 | `sw.js` | Keeps a copy on the phone so it opens offline |
 | `manifest.webmanifest` | Name, colors and icon for the home screen |
 | `icon-180.png`, `icon-512.png` | Home screen icons |
+| `logo.jpg` | The farm logo shown on the Home screen |
 | `notify/` | The optional notification service (runs on Cloudflare) |

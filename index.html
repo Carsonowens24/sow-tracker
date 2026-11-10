@@ -187,6 +187,26 @@ input[type="text"], input[type="search"], input[type="date"], input[type="time"]
 .tools .hint { margin: 0 0 6px; }
 .tools-group { display: flex; flex-direction: column; gap: 10px; }
 .tools a { color: var(--go); font-weight: 700; }
+.logo { background: #ffffff; border-radius: 14px; padding: 10px; border: 2px solid var(--line); }
+.logo img { display: block; width: 100%; height: auto; border-radius: 6px; }
+body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
+.nav {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 15;
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  background: var(--surface); border-top: 2px solid var(--line);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-left: env(safe-area-inset-left, 0px); padding-right: env(safe-area-inset-right, 0px);
+}
+.nav button {
+  min-height: 68px; border: 0; background: transparent; color: var(--muted);
+  font-weight: 700; font-size: 15px; padding: 6px 2px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+}
+.nav svg { width: 28px; height: 28px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.nav button.on { color: var(--go); box-shadow: inset 0 4px 0 var(--go); }
+.nav .badge { position: absolute; top: 6px; margin-left: 34px; min-width: 22px; height: 22px; padding: 0 6px; border-radius: 11px; background: var(--tag); color: var(--tag-ink); font-size: 13px; line-height: 22px; font-weight: 800; }
+.nav button { position: relative; }
+.toast { bottom: calc(96px + env(safe-area-inset-bottom, 0px)) !important; }
 .version { text-align: center; color: var(--muted); font-size: 14px; margin: 0; }
 .empty {
   border: 2px dashed var(--line);
@@ -236,14 +256,15 @@ input[type="text"], input[type="search"], input[type="date"], input[type="time"]
 <body>
 <!--BODY-START-->
 <div class="wrap" id="mainView">
-  <div class="top">
-    <h1>Sow Tracker</h1>
+  <div class="logo" id="homeLogo"><img src="logo.jpg" alt="Steve &amp; Mark Gray Showpigs" width="1000" height="489"></div>
+  <div class="top" id="screenTop" hidden>
+    <h1 id="screenTitle">Breedings</h1>
     <span class="count" id="count"></span>
   </div>
 
   <button type="button" class="alert" id="dueAlert" hidden></button>
 
-  <section class="speak" aria-label="Log a breeding">
+  <section class="speak" id="speak" aria-label="Log by voice">
     <button type="button" class="mic" id="micBtn" aria-label="Tap and speak a breeding">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15a3.5 3.5 0 0 0 3.5-3.5v-6a3.5 3.5 0 0 0-7 0v6A3.5 3.5 0 0 0 12 15zm6-3.5a1 1 0 0 0-2 0 4 4 0 0 1-8 0 1 1 0 0 0-2 0 6 6 0 0 0 5 5.9V20H8.5a1 1 0 0 0 0 2h7a1 1 0 0 0 0-2H13v-2.6a6 6 0 0 0 5-5.9z"/></svg>
       <span id="micLabel">Tap to speak</span>
@@ -254,26 +275,16 @@ input[type="text"], input[type="search"], input[type="date"], input[type="time"]
       <input type="text" id="typedText" placeholder="Or type it here" autocomplete="off" autocapitalize="sentences" enterkeyhint="go" aria-label="Type a breeding">
       <button type="submit" class="btn go">Go</button>
     </form>
-    <div class="byhand">
-      <span>Or fill in by hand</span>
-      <div class="pair">
-        <button type="button" class="btn" id="manualBtn">Add breeding</button>
-        <button type="button" class="btn" id="manualHeatBtn">Add heat</button>
-      </div>
-    </div>
   </section>
 
-  <section class="listhead" aria-label="Records">
-    <div class="tabs">
-      <button type="button" class="tab on" id="tabBreed" aria-pressed="true">Breedings</button>
-      <button type="button" class="tab" id="tabHeat" aria-pressed="false">Heat</button>
-      <button type="button" class="tab" id="tabDue" aria-pressed="false">Coming in</button>
-    </div>
+  <section class="listhead" id="listhead" aria-label="Records" hidden>
+    <button type="button" class="btn go wide" id="manualBtn">Add breeding</button>
+    <button type="button" class="btn go wide" id="manualHeatBtn">Add heat</button>
     <input type="search" id="search" placeholder="Find a sow" autocomplete="off" aria-label="Find a sow">
   </section>
   <ul class="list" id="list"></ul>
   <div class="empty" id="empty" hidden>
-    <p>No breedings logged yet. Tap the microphone and try one of these:</p>
+    <p>No breedings logged yet. Tap Add breeding, or go to Home, tap the microphone and say:</p>
     <ul>
       <li>&ldquo;Sow 118 was bred to Hang Time on July 26th&rdquo;</li>
       <li>&ldquo;Rosie bred to Hang Time today&rdquo;</li>
@@ -281,7 +292,7 @@ input[type="text"], input[type="search"], input[type="date"], input[type="time"]
     </ul>
   </div>
   <div class="empty" id="emptyHeat" hidden>
-    <p>No heat records yet. Tap the microphone and try one of these:</p>
+    <p>No heat records yet. Tap Add heat, or go to Home, tap the microphone and say:</p>
     <ul>
       <li>&ldquo;Sow 118 showing heat signs today&rdquo;</li>
       <li>&ldquo;Sow 118 first standing this morning&rdquo;</li>
@@ -297,7 +308,7 @@ input[type="text"], input[type="search"], input[type="date"], input[type="time"]
     <p class="none" id="dueFarrowNone">No sows due to farrow in the next 2 weeks.</p>
   </div>
   <div class="empty" id="nomatch" hidden><p>Nothing matches that search.</p></div>
-  <section class="tools" aria-label="Backup and reminders">
+  <section class="tools" id="tools" aria-label="Backup and reminders">
     <h2>Backup</h2>
     <button type="button" class="btn wide" id="exportBtn">Export spreadsheet (CSV)</button>
     <p class="hint" id="lastBackup"></p>
@@ -314,7 +325,7 @@ input[type="text"], input[type="search"], input[type="date"], input[type="time"]
     <p class="hint">Makes a calendar file with each sow's expected return to heat and farrowing date, with an alert at 6 AM that day.</p>
     <p class="hint" id="fileLink" hidden></p>
   </section>
-  <p class="version">Version 6.1</p>
+  <p class="version" id="version">Version 7</p>
 </div>
 
 <div class="wrap" id="sowView" hidden>
@@ -332,6 +343,13 @@ input[type="text"], input[type="search"], input[type="date"], input[type="time"]
   <p class="hint">Tap an entry to edit or delete it.</p>
   <ul class="list" id="sowList"></ul>
 </div>
+
+<nav class="nav" id="nav" aria-label="Screens">
+  <button type="button" data-go="home" class="on"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l9-8 9 8M5 10v10h14V10"/></svg>Home</button>
+  <button type="button" data-go="breeding"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14v16H5zM9 9h6M9 13h6M9 17h3"/></svg>Breeding</button>
+  <button type="button" data-go="heat"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3c1 4 5 6 5 11a5 5 0 0 1-10 0c0-2 1-3 2-4 0 2 1 3 2 3 0-4-1-6 1-10z"/></svg>Heat</button>
+  <button type="button" data-go="due"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16v14H4zM4 10h16M8 3v4M16 3v4"/></svg>Coming in<span class="badge" id="navBadge" hidden></span></button>
+</nav>
 
 <div class="sheet" id="sheet" hidden>
   <form id="entryForm" novalidate>
@@ -838,24 +856,25 @@ input[type="text"], input[type="search"], input[type="date"], input[type="time"]
     if (chosen) openSow(chosen.sow);
   });
 
-  var tab = 'breeding';
+  // Which screen is showing: home, breeding, heat or due (Coming in)
+  var tab = 'home';
+  var TITLES = { breeding: 'Breedings', heat: 'Heat', due: 'Coming in' };
   function setTab(t) {
+    if (currentSow != null) closeSow();
     tab = t;
-    $('tabBreed').classList.toggle('on', t === 'breeding');
-    $('tabHeat').classList.toggle('on', t === 'heat');
-    $('tabDue').classList.toggle('on', t === 'due');
-    $('tabBreed').setAttribute('aria-pressed', t === 'breeding');
-    $('tabHeat').setAttribute('aria-pressed', t === 'heat');
-    $('tabDue').setAttribute('aria-pressed', t === 'due');
+    Array.prototype.forEach.call(document.querySelectorAll('#nav button'), function (b) {
+      var on = b.getAttribute('data-go') === t;
+      b.classList.toggle('on', on);
+      if (on) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
+    });
+    searchEl.value = '';
     render();
+    window.scrollTo(0, 0);
   }
-  $('tabBreed').addEventListener('click', function () { setTab('breeding'); });
-  $('tabHeat').addEventListener('click', function () { setTab('heat'); });
-  $('tabDue').addEventListener('click', function () { setTab('due'); });
-  $('dueAlert').addEventListener('click', function () {
-    setTab('due');
-    $('tabDue').scrollIntoView({ block: 'start' });
+  Array.prototype.forEach.call(document.querySelectorAll('#nav button'), function (b) {
+    b.addEventListener('click', function () { setTab(b.getAttribute('data-go')); });
   });
+  $('dueAlert').addEventListener('click', function () { setTab('due'); });
 
   function render() {
     renderSow();
@@ -878,8 +897,18 @@ input[type="text"], input[type="search"], input[type="date"], input[type="time"]
     }
     try { if (navigator.setAppBadge) { if (soonH + soonF) navigator.setAppBadge(soonH + soonF); else navigator.clearAppBadge(); } } catch (e) {}
 
-    var isDue = tab === 'due';
-    listEl.hidden = isDue;
+    var isDue = tab === 'due', isHome = tab === 'home';
+    $('homeLogo').hidden = !isHome;
+    $('speak').hidden = !isHome;
+    $('tools').hidden = !isHome;
+    $('version').hidden = !isHome;
+    if (!isHome) bar.hidden = true;
+    $('screenTop').hidden = isHome;
+    $('listhead').hidden = isHome;
+    $('screenTitle').textContent = TITLES[tab] || '';
+    $('manualBtn').hidden = tab !== 'breeding';
+    $('manualHeatBtn').hidden = tab !== 'heat';
+    listEl.hidden = isDue || isHome;
     $('dueView').hidden = !isDue;
     listEl.textContent = '';
     var all = [], rows = [];
@@ -891,7 +920,7 @@ input[type="text"], input[type="search"], input[type="date"], input[type="time"]
       $('dueHeatNone').hidden = dh.length > 0;
       $('dueFarrowNone').hidden = df.length > 0;
     } else {
-      all = sorted(tab === 'heat' ? data.heats : data.breedings);
+      all = isHome ? [] : sorted(tab === 'heat' ? data.heats : data.breedings);
       rows = all.filter(match);
       rows.forEach(function (r) {
         listEl.appendChild(makeRow(r, true, function () { openChoice(r); }));
@@ -901,9 +930,10 @@ input[type="text"], input[type="search"], input[type="date"], input[type="time"]
     $('emptyHeat').hidden = !(tab === 'heat' && all.length === 0);
     $('nomatch').hidden = !(!isDue && all.length > 0 && rows.length === 0);
     var nb = data.breedings.length, nh = data.heats.length;
-    $('count').textContent = nb + nh ? plural(nb, 'breeding') + ' \u00B7 ' + nh + ' heat' : '';
     var nDue = due.heat.length + due.farrow.length;
-    $('tabDue').textContent = 'Coming in' + (nDue ? ' (' + nDue + ')' : '');
+    $('count').textContent = tab === 'breeding' ? plural(nb, 'breeding') : tab === 'heat' ? plural(nh, 'heat record') : tab === 'due' ? nDue + ' due' : '';
+    $('navBadge').hidden = !nDue;
+    $('navBadge').textContent = nDue;
   }
   searchEl.addEventListener('input', render);
 
@@ -1008,7 +1038,7 @@ input[type="text"], input[type="search"], input[type="date"], input[type="time"]
     else { rec.boar = editing ? boar : matchKnown(boar, 'boar'); }
     var ok = save();
     closeSheet();
-    if (currentSow == null && tab !== sheetKind) setTab(sheetKind); else render();
+    render();
     toast(!ok ? 'Could not save to this phone. Check storage settings.'
       : heat ? 'Saved: ' + sow + ', ' + STAGES[stage].toLowerCase()
       : 'Saved: ' + sow + ' bred to ' + boar);

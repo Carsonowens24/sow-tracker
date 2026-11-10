@@ -1,9 +1,9 @@
 // Keeps a copy of the app on the phone so it opens with no signal.
 // With a connection it loads the newest version; if the connection is
 // missing or slow (over 3 seconds) it opens the copy saved on the phone.
-const CACHE = 'sow-tracker-v2';
+const CACHE = 'sow-tracker-v3';
 const DATA = 'sow-tracker-data';   // the reminder list the app saves for notifications
-const FILES = ['./', 'index.html', 'manifest.webmanifest', 'icon-180.png', 'icon-512.png'];
+const FILES = ['./', 'index.html', 'manifest.webmanifest', 'icon-180.png', 'icon-512.png', 'logo.jpg'];
 const WAIT_MS = 3000;
 
 self.addEventListener('install', (e) => {
