@@ -1,6 +1,6 @@
 {
   // The small online service that sends Sow Tracker's notifications.
-  "name": "sow-tracker-notify",
+  "name": "sow-tracker",
   "main": "notify/src/index.js",
   "compatibility_date": "2025-10-01",
   // Wakes up once an hour to see whether any phone has a sow due today.

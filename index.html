@@ -314,7 +314,7 @@ input[type="text"], input[type="search"], input[type="date"], input[type="time"]
     <p class="hint">Makes a calendar file with each sow's expected return to heat and farrowing date, with an alert at 6 AM that day.</p>
     <p class="hint" id="fileLink" hidden></p>
   </section>
-  <p class="version">Version 6</p>
+  <p class="version">Version 6.1</p>
 </div>
 
 <div class="wrap" id="sowView" hidden>
@@ -1295,7 +1295,7 @@ input[type="text"], input[type="search"], input[type="date"], input[type="time"]
 
   /* ---------- Notifications from the app ---------- */
   // Address of the notification service. Left empty until the service is running.
-  var PUSH_URL = '';
+  var PUSH_URL = 'https://sow-tracker.carsonowens24.workers.dev';
   var REMIND_HOUR = 6;   // 6 AM, phone's local time
 
   // What is due and when. The details stay on the phone; only the dates are sent to the service.

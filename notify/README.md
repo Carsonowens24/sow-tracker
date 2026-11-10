@@ -9,7 +9,7 @@ A small service that runs on Cloudflare's free plan and sends Sow Tracker's noti
 
 In Cloudflare, create a Worker by importing this GitHub repository, with:
 
-- Project name: `sow-tracker-notify`
+- Project name: `sow-tracker`
 - Deploy command: `npx wrangler deploy`
 
 Leave the other settings alone. The `wrangler.jsonc` file in the main folder tells Cloudflare where the service's code is.
