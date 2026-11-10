@@ -11,6 +11,12 @@ The app has four screens. Switch between them with the bar at the bottom.
 - **Heat:** every heat record, with an **Add heat** button.
 - **Coming in:** sows due back in heat or due to farrow.
 
+How to read the colors:
+
+- **Dots on each entry:** blue is a breeding, pink is heat signs noticed, red is first standing, grey is went out.
+- **Coming in:** a red outline means overdue, an orange outline means due today or tomorrow.
+- **Orange checkmark:** flashes in the middle of the screen each time an entry is saved.
+
 - **Log a breeding by voice.** Tap the big microphone and say something like:
   - "Sow 118 was bred to Hang Time on July 26th"
   - "Rosie bred to Hang Time today"

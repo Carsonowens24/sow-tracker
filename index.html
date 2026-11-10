@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Sow Tracker">
-<meta name="theme-color" content="#1f6b3a">
+<meta name="theme-color" content="#111111">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="app-icon-180.png">
 <!--APP-START-->
@@ -16,13 +16,18 @@
 /* Layout: one thumb-reachable column. Speak or type at the top, records below.
    Every control is at least 56px tall for gloved hands. System fonts only, so it works offline. */
 :root {
-  --bg: #f1f4ee;
+  --bg: #f4f2ef;
   --surface: #ffffff;
-  --ink: #131a13;
-  --muted: #535f53;
-  --line: #cbd3c7;
-  --go: #1f6b3a;
-  --go-ink: #ffffff;
+  --ink: #141210;
+  --muted: #5c564f;
+  --line: #d4cec6;
+  --go: #e78431;       /* the orange from the Gray Showpigs logo */
+  --go-ink: #141210;
+  --soon: #b3560a;     /* due today or tomorrow */
+  --c-bred: #1d5fd1;
+  --c-signs: #c2338a;
+  --c-standing: #c62828;
+  --c-out: #77716a;
   --tag: #f6c915;      /* ear-tag yellow */
   --tag-ink: #1a1500;
   --danger: #b3261e;
@@ -34,14 +39,16 @@
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #0e130e; --surface: #1a221a; --ink: #eef2ea; --muted: #a5b0a1; --line: #323e32;
-    --go: #43a865; --go-ink: #05140a; --danger: #ff7366; --danger-ink: #1c0502;
+    --bg: #121110; --surface: #1f1d1b; --ink: #f3efe9; --muted: #b3aca2; --line: #3b3733;
+    --go: #f0903f; --go-ink: #141210; --danger: #ff7366; --danger-ink: #1c0502;
+    --soon: #f5a155; --c-bred: #6ea3ff; --c-signs: #f078c0; --c-standing: #ff6b61; --c-out: #a39c93;
     color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
-  --bg: #0e130e; --surface: #1a221a; --ink: #eef2ea; --muted: #a5b0a1; --line: #323e32;
-  --go: #43a865; --go-ink: #05140a; --danger: #ff7366; --danger-ink: #1c0502;
+  --bg: #121110; --surface: #1f1d1b; --ink: #f3efe9; --muted: #b3aca2; --line: #3b3733;
+  --go: #f0903f; --go-ink: #141210; --danger: #ff7366; --danger-ink: #1c0502;
+    --soon: #f5a155; --c-bred: #6ea3ff; --c-signs: #f078c0; --c-standing: #ff6b61; --c-out: #a39c93;
   color-scheme: dark;
 }
 * { box-sizing: border-box; }
@@ -71,7 +78,7 @@ h2 { font-size: 20px; margin: 0; }
 
 button, input { font: inherit; color: inherit; }
 button { cursor: pointer; touch-action: manipulation; }
-:focus-visible { outline: 3px solid var(--go); outline-offset: 2px; }
+:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
 
 .btn {
   min-height: var(--tap);
@@ -155,7 +162,8 @@ input[type="text"], input[type="search"], input[type="date"], input[type="time"]
 .when { text-align: right; font-size: 16px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .when b { display: block; color: var(--ink); font-size: 18px; }
 .sowhead { display: flex; align-items: center; gap: 14px; }
-.sowhead .tag { font-size: 30px; padding: 12px 16px; max-width: 60%; }
+.sowhead .tag { font-size: 30px; padding: 12px 16px; max-width: 55%; flex: none; }
+.sowhead p { flex: 1; }
 .sowhead p { margin: 0; color: var(--muted); font-size: 17px; min-width: 0; }
 .sowhead p b { display: block; color: var(--ink); font-size: 19px; }
 .row.plain { grid-template-columns: 1fr auto; }
@@ -186,7 +194,7 @@ input[type="text"], input[type="search"], input[type="date"], input[type="time"]
 .tools { display: flex; flex-direction: column; gap: 10px; margin-top: 14px; padding-top: 18px; border-top: 2px solid var(--line); }
 .tools .hint { margin: 0 0 6px; }
 .tools-group { display: flex; flex-direction: column; gap: 10px; }
-.tools a { color: var(--go); font-weight: 700; }
+.tools a { color: var(--ink); font-weight: 700; }
 .logo { background: #ffffff; border-radius: 14px; padding: 10px; border: 2px solid var(--line); }
 .logo img { display: block; width: 100%; height: auto; border-radius: 6px; }
 body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
@@ -203,10 +211,33 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
 }
 .nav svg { width: 28px; height: 28px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-.nav button.on { color: var(--go); box-shadow: inset 0 4px 0 var(--go); }
+.nav button.on { color: var(--ink); box-shadow: inset 0 5px 0 var(--go); }
 .nav .badge { position: absolute; top: 6px; margin-left: 34px; min-width: 22px; height: 22px; padding: 0 6px; border-radius: 11px; background: var(--tag); color: var(--tag-ink); font-size: 13px; line-height: 22px; font-weight: 800; }
 .nav button { position: relative; }
 .toast { bottom: calc(96px + env(safe-area-inset-bottom, 0px)) !important; }
+.splash { position: fixed; inset: 0; z-index: 50; background: #ffffff; display: flex; align-items: center; justify-content: center; pointer-events: none; animation: splashOut 0.35s ease 0.85s forwards; }
+.splash img { width: min(82%, 440px); height: auto; }
+@keyframes splashOut { to { opacity: 0; visibility: hidden; } }
+.dot { display: inline-block; width: 14px; height: 14px; border-radius: 50%; margin-right: 8px; vertical-align: -1px; flex: none; }
+.dot-bred { background: var(--c-bred); }
+.dot-signs { background: var(--c-signs); }
+.dot-standing { background: var(--c-standing); }
+.dot-out { background: var(--c-out); }
+.row.late { border-color: var(--danger); }
+.row.soon { border-color: var(--soon); }
+.when b.soon { color: var(--soon); }
+.row.late .when, .row.soon .when { font-weight: 700; }
+.row.late .when { color: var(--danger); }
+.row.soon .when { color: var(--soon); }
+.saved { position: fixed; left: 50%; top: 42%; z-index: 40; width: 132px; height: 132px; margin: -66px 0 0 -66px; border-radius: 50%; background: var(--go); color: var(--go-ink); display: flex; align-items: center; justify-content: center; pointer-events: none; animation: savedPop 0.9s ease forwards; }
+.saved svg { width: 76px; height: 76px; fill: none; stroke: currentColor; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 24; stroke-dashoffset: 24; animation: savedDraw 0.3s ease 0.12s forwards; }
+@keyframes savedPop { 0% { transform: scale(0.6); opacity: 0; } 18% { transform: scale(1.06); opacity: 1; } 28% { transform: scale(1); } 75% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes savedDraw { to { stroke-dashoffset: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .splash { animation-duration: 0.01s; }
+  .saved { animation: none; }
+  .saved svg { animation: none; stroke-dashoffset: 0; }
+}
 .version { text-align: center; color: var(--muted); font-size: 14px; margin: 0; }
 .empty {
   border: 2px dashed var(--line);
@@ -255,6 +286,7 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
 </head>
 <body>
 <!--BODY-START-->
+<div class="splash" aria-hidden="true"><img src="logo.jpg" alt="" width="1000" height="489"></div>
 <div class="wrap" id="mainView">
   <div class="logo" id="homeLogo"><img src="logo.jpg" alt="Steve &amp; Mark Gray Showpigs" width="1000" height="489"></div>
   <div class="top" id="screenTop" hidden>
@@ -325,7 +357,7 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
     <p class="hint">Makes a calendar file with each sow's expected return to heat and farrowing date, with an alert at 6 AM that day.</p>
     <p class="hint" id="fileLink" hidden></p>
   </section>
-  <p class="version" id="version">Version 7.1</p>
+  <p class="version" id="version">Version 8</p>
 </div>
 
 <div class="wrap" id="sowView" hidden>
@@ -362,9 +394,9 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
     <div class="field" id="stageField">
       <label id="stageLabel">Heat stage</label>
       <div class="stages" id="stages" role="group" aria-labelledby="stageLabel">
-        <button type="button" class="stage" data-stage="signs">Heat signs noticed</button>
-        <button type="button" class="stage" data-stage="standing">First standing</button>
-        <button type="button" class="stage" data-stage="out">Went out</button>
+        <button type="button" class="stage" data-stage="signs"><span class="dot dot-signs"></span>Heat signs noticed</button>
+        <button type="button" class="stage" data-stage="standing"><span class="dot dot-standing"></span>First standing</button>
+        <button type="button" class="stage" data-stage="out"><span class="dot dot-out"></span>Went out</button>
       </div>
     </div>
     <div class="field" id="boarField">
@@ -412,6 +444,7 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
   </form>
 </div>
 
+<div class="saved" id="saved" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>
 <div class="toast" id="toast" hidden></div>
 
 <script>
@@ -720,7 +753,8 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
   }
   function makeDueRow(o, field) {
     var li = el('li');
-    var b = el('button', 'row');
+    var left = daysUntil(o[field]);
+    var b = el('button', 'row' + (left < 0 ? ' late' : left <= 1 ? ' soon' : ''));
     b.type = 'button';
     b.appendChild(el('span', 'tag', o.sow));
     var who = el('span', 'who');
@@ -728,7 +762,7 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
     who.appendChild(el('small', '', o.bred ? 'Bred ' + shortDate(o.bred.date) : 'Last heat ' + shortDate(o.lastHeat)));
     b.appendChild(who);
     var when = el('span', 'when');
-    var d = el('b', daysUntil(o[field]) < 0 ? 'late' : '', niceDate(o[field]));
+    var d = el('b', left < 0 ? 'late' : left <= 1 ? 'soon' : '', niceDate(o[field]));
     when.appendChild(d);
     when.appendChild(document.createTextNode(dueText(o[field])));
     b.appendChild(when);
@@ -755,12 +789,16 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
     b.type = 'button';
     if (withTag) b.appendChild(el('span', 'tag', r.sow));
     var who = el('span', 'who');
+    var label = el('b');
+    label.appendChild(el('span', 'dot dot-' + (isHeat(r) ? r.type : 'bred')));
     if (isHeat(r)) {
-      who.appendChild(el('b', '', STAGES[r.type] || 'Heat'));
+      label.appendChild(document.createTextNode(STAGES[r.type] || 'Heat'));
+      who.appendChild(label);
       var tt = niceTime(r);
       if (tt) who.appendChild(el('small', '', tt));
     } else {
-      who.appendChild(el('b', '', (withTag ? '' : 'Bred to ') + (r.boar || 'boar not set')));
+      label.appendChild(document.createTextNode((withTag ? '' : 'Bred to ') + (r.boar || 'boar not set')));
+      who.appendChild(label);
       var n = serviceNumber(r);
       if (n > 1) who.appendChild(el('small', '', ordinal(n) + ' breeding this heat'));
     }
@@ -937,6 +975,18 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
   }
   searchEl.addEventListener('input', render);
 
+  // Big checkmark (and a short buzz where the phone allows it) so a save is obvious at a glance
+  var savedTimer;
+  function flashSaved() {
+    var s = $('saved');
+    s.hidden = true;
+    void s.offsetWidth;   // restart the animation
+    s.hidden = false;
+    clearTimeout(savedTimer);
+    savedTimer = setTimeout(function () { s.hidden = true; }, 950);
+    try { if (navigator.vibrate) navigator.vibrate(40); } catch (e) {}
+  }
+
   var toastTimer;
   function toast(msg) {
     var t = $('toast');
@@ -1039,6 +1089,7 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
     var ok = save();
     closeSheet();
     render();
+    if (ok) flashSaved();
     toast(!ok ? 'Could not save to this phone. Check storage settings.'
       : heat ? 'Saved: ' + sow + ', ' + STAGES[stage].toLowerCase()
       : 'Saved: ' + sow + ' bred to ' + boar);
