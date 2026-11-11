@@ -264,7 +264,9 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
   padding-left: max(16px, env(safe-area-inset-left, 0px));
   padding-right: max(16px, env(safe-area-inset-right, 0px));
 }
-.sheet form { max-width: 560px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+.sheet form, .sheet .sheetbody { max-width: 560px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+.sheet .sheetbody form { margin: 0; gap: 6px; }
+.sheet .hint { margin: 0; }
 .heard { margin: 0; color: var(--muted); font-size: 16px; overflow-wrap: anywhere; }
 .field { display: flex; flex-direction: column; gap: 6px; }
 .field label { font-weight: 700; font-size: 16px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
@@ -318,6 +320,7 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
     <button type="button" class="btn go wide" id="manualBtn">Add breeding</button>
     <button type="button" class="btn go wide" id="manualHeatBtn">Add heat</button>
     <button type="button" class="btn go wide" id="manualLitterBtn">Add litter</button>
+    <button type="button" class="btn wide" id="optBtn">Options</button>
     <input type="search" id="search" placeholder="Find a sow" autocomplete="off" aria-label="Find a sow">
   </section>
   <ul class="list" id="list"></ul>
@@ -364,6 +367,9 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
   </div>
   <div class="empty" id="nomatch" hidden><p>Nothing matches that search.</p></div>
   <section class="tools" id="tools" aria-label="Backup and reminders">
+    <h2>Archives</h2>
+    <button type="button" class="btn wide" id="archOpenBtn">See archives</button>
+    <p class="hint" id="archCount">Finished seasons you have put away. To archive, open Breeding, Heat or Litters and tap Options.</p>
     <h2>Backup</h2>
     <button type="button" class="btn wide" id="exportBtn">Export spreadsheet (CSV)</button>
     <p class="hint" id="lastBackup"></p>
@@ -399,7 +405,7 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
     <p class="hint">Makes a calendar file with each sow's expected return to heat and farrowing date, with an alert at 6 AM that day.</p>
     <p class="hint" id="fileLink" hidden></p>
   </section>
-  <p class="version" id="version">Version 12</p>
+  <p class="version" id="version">Version 13</p>
 </div>
 
 <div class="wrap" id="sowView" hidden>
@@ -472,6 +478,48 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
       <button type="button" class="btn danger" id="deleteBtn" hidden>Delete this entry</button>
     </div>
   </form>
+</div>
+
+<div class="sheet" id="optSheet" hidden>
+  <form id="optForm" novalidate>
+    <h2 id="optTitle">Options</h2>
+    <p class="heard" id="optInfo"></p>
+    <div class="field" id="optNameField">
+      <label for="optName">Name for this archive</label>
+      <input type="text" id="optName" autocomplete="off" autocapitalize="words" maxlength="40">
+    </div>
+    <div class="actions">
+      <button type="submit" class="btn go save" id="optArchive">Archive</button>
+      <button type="button" class="btn" id="optSee">See archives</button>
+      <button type="button" class="btn" id="optCancel">Cancel</button>
+    </div>
+  </form>
+</div>
+
+<div class="sheet" id="archSheet" hidden>
+  <div class="sheetbody">
+    <button type="button" class="btn" id="archBack">&lsaquo; Back</button>
+    <h2 id="archTitle">Archives</h2>
+    <div class="tools-group" id="archListWrap">
+      <ul class="list" id="archList"></ul>
+      <p class="hint" id="archNone">No archives yet. When a season is finished, open Breeding, Heat or Litters, tap Options, and archive it under a name.</p>
+    </div>
+    <div class="tools-group" id="archDetail" hidden>
+      <p class="heard" id="archInfo"></p>
+      <ul class="list" id="archRows"></ul>
+      <form class="field" id="archRenameForm">
+        <label for="archName">Archive name</label>
+        <div class="typed">
+          <input type="text" id="archName" autocomplete="off" autocapitalize="words" maxlength="40">
+          <button type="submit" class="btn">Rename</button>
+        </div>
+      </form>
+      <div class="actions">
+        <button type="button" class="btn" id="archRestore">Bring back</button>
+        <button type="button" class="btn danger" id="archDelete">Delete this archive</button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <div class="sheet" id="taskSheet" hidden>
@@ -770,7 +818,7 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
 
   /* ---------- Storage (stays on this phone) ---------- */
   var KEY = 'sowtracker.v1';
-  var data = { breedings: [], heats: [], litters: [], gone: [] };
+  var data = { breedings: [], heats: [], litters: [], gone: [], archives: [], archived: [] };
   var storageOK = true;
   function load() {
     try {
@@ -780,6 +828,8 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
     if (!Array.isArray(data.heats)) data.heats = [];
     if (!Array.isArray(data.litters)) data.litters = [];
     if (!Array.isArray(data.gone)) data.gone = [];
+    if (!Array.isArray(data.archives)) data.archives = [];   // named archives
+    if (!Array.isArray(data.archived)) data.archived = [];   // the entries inside them
     if (typeof tidyLitters === 'function') tidyLitters();   // deleted entries, remembered so sharing does not bring them back
   }
   // fromShare: the change came from another phone, so do not send it straight back
@@ -795,7 +845,7 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
   function key(s) { return String(s || '').toLowerCase().replace(/\s+/g, ' ').trim(); }
   function isHeat(r) { return !!r.type; }
   function everything() { return data.breedings.concat(data.heats); }   // breedings and heat records
-  function allRecords() { return everything().concat(data.litters); }     // plus litters: for backup and sharing
+  function allRecords() { return everything().concat(data.litters, data.archived, data.archives); }   // everything saved: for backup and sharing
   // Reuse the spelling already on file, so "hang time" and "Hang Time" stay one boar.
   function matchKnown(value, field) {
     var k = key(value), all = field === 'sow' ? everything() : data.breedings;
@@ -1268,6 +1318,181 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
     toast('Marked as not done');
   });
 
+  /* ---------- Archives: put a finished season away under a name ---------- */
+  // Archiving a screen moves everything on it into a named archive and leaves the screen empty for the next season.
+  // Archived entries are kept (and backed up and shared) but no longer count toward due dates, jobs or reminders.
+  var TAB_WORDS = { breeding: ['breeding', 'breedings', 'Breedings'], heat: ['heat record', 'heat records', 'Heat'], litters: ['litter', 'litters', 'Litters'] };
+  function tabList(t) { return t === 'breeding' ? data.breedings : t === 'heat' ? data.heats : data.litters; }
+  function archiveItems(a) { return data.archived.filter(function (r) { return r.arch === a.id; }); }
+  function seasonName() {
+    var d = new Date(), m = d.getMonth();
+    return (m < 2 || m === 11 ? 'Winter' : m < 5 ? 'Spring' : m < 8 ? 'Summer' : 'Fall') + ' ' + d.getFullYear();
+  }
+  function makeArchive(name, t) {
+    var a = { id: newId(), kind: 'archive', name: name, tab: t, created: Date.now(), updated: Date.now() };
+    data.archives.push(a);
+    return a;
+  }
+  function archiveTab(t, name) {
+    var list = tabList(t).slice();
+    if (!list.length) return 0;
+    var a = makeArchive(name, t), now = Date.now();
+    list.forEach(function (r) { r.arch = a.id; r.updated = now; data.archived.push(r); });
+    if (t === 'breeding') data.breedings = []; else if (t === 'heat') data.heats = []; else data.litters = [];
+    return list.length;
+  }
+  function restoreArchive(a) {
+    var now = Date.now(), n = 0;
+    archiveItems(a).forEach(function (r) {
+      delete r.arch; r.updated = now; n++;
+      (r.kind === 'litter' ? data.litters : isHeat(r) ? data.heats : data.breedings).push(r);
+    });
+    data.archived = data.archived.filter(function (r) { return r.arch; });
+    data.archives = data.archives.filter(function (x) { return x.id !== a.id; });
+    data.gone.push({ id: a.id, updated: now });
+    return n;
+  }
+  function deleteArchive(a) {
+    var now = Date.now();
+    archiveItems(a).forEach(function (r) { data.gone.push({ id: r.id, updated: now }); });
+    data.archived = data.archived.filter(function (r) { return r.arch !== a.id; });
+    data.archives = data.archives.filter(function (x) { return x.id !== a.id; });
+    data.gone.push({ id: a.id, updated: now });
+  }
+
+  // Options button on the Breeding, Heat and Litters screens
+  var optTab = 'breeding';
+  $('optBtn').addEventListener('click', function () {
+    optTab = tab;
+    var w = TAB_WORDS[optTab], n = tabList(optTab).length;
+    $('optTitle').textContent = w[2] + ' options';
+    $('optInfo').textContent = n
+      ? 'Archiving moves ' + (n === 1 ? 'the 1 ' + w[0] : 'all ' + n + ' ' + w[1]) + ' on this screen into a named archive and clears the screen for the next season. You can look at an archive or bring it back at any time.'
+        + (optTab === 'litters' ? ' Vaccine and weaning jobs for these litters will stop showing.' : optTab === 'breeding' ? ' These breedings will stop counting toward Coming in.' : '')
+      : 'There is nothing on this screen to archive yet.';
+    $('optNameField').hidden = !n;
+    $('optArchive').hidden = !n;
+    $('optArchive').textContent = 'Archive ' + (n === 1 ? '1 ' + w[0] : n + ' ' + w[1]);
+    $('optName').value = seasonName();
+    $('optName').classList.remove('missing');
+    $('optSheet').hidden = false;
+    $('optSheet').scrollTop = 0;
+  });
+  $('optCancel').addEventListener('click', function () { $('optSheet').hidden = true; });
+  $('optForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var name = tidy($('optName').value).slice(0, 40);
+    $('optName').classList.toggle('missing', !name);
+    if (!name) { toast('Give the archive a name'); $('optName').focus(); return; }
+    var n = archiveTab(optTab, name);
+    var ok = save();
+    $('optSheet').hidden = true;
+    render(); showLastBackup();
+    if (ok && n) { flashSaved(); toast('Archived ' + n + ' as “' + name + '”'); }
+  });
+  $('optSee').addEventListener('click', function () { $('optSheet').hidden = true; openArchives(); });
+  $('archOpenBtn').addEventListener('click', function () { openArchives(); });
+
+  // The archive section: a list of archives, then one archive's contents
+  var archNow = null, archArmed = false, archArmTimer;
+  function disarmArchDelete() {
+    archArmed = false; clearTimeout(archArmTimer);
+    $('archDelete').classList.remove('armed');
+    $('archDelete').textContent = 'Delete this archive';
+  }
+  function frozenRow(li) {            // same look as a normal row, but tapping does nothing
+    var b = li.querySelector('button');
+    var copy = b.cloneNode(true);
+    copy.disabled = true;
+    copy.style.opacity = '1';
+    b.parentNode.replaceChild(copy, b);
+    return li;
+  }
+  function openArchives() {
+    archNow = null;
+    $('archTitle').textContent = 'Archives';
+    $('archBack').textContent = '‹ Back';
+    $('archListWrap').hidden = false;
+    $('archDetail').hidden = true;
+    var list = $('archList');
+    list.textContent = '';
+    var all = data.archives.slice().sort(function (a, b) { return b.created - a.created; });
+    all.forEach(function (a) {
+      var n = archiveItems(a).length, w = TAB_WORDS[a.tab] || TAB_WORDS.breeding;
+      var li = el('li'), b = el('button', 'row plain');
+      b.type = 'button';
+      var who = el('span', 'who');
+      who.appendChild(el('b', '', a.name));
+      who.appendChild(el('small', '', n + ' ' + (n === 1 ? w[0] : w[1])));
+      b.appendChild(who);
+      var when = el('span', 'when');
+      when.appendChild(el('b', '', shortDate(toISO(new Date(a.created)))));
+      when.appendChild(document.createTextNode('Archived'));
+      b.appendChild(when);
+      b.addEventListener('click', function () { openArchive(a); });
+      li.appendChild(b);
+      list.appendChild(li);
+    });
+    $('archNone').hidden = all.length > 0;
+    $('archSheet').hidden = false;
+    $('archSheet').scrollTop = 0;
+  }
+  function openArchive(a) {
+    archNow = a;
+    var items = archiveItems(a), w = TAB_WORDS[a.tab] || TAB_WORDS.breeding;
+    $('archTitle').textContent = a.name;
+    $('archBack').textContent = '‹ All archives';
+    $('archListWrap').hidden = true;
+    $('archDetail').hidden = false;
+    $('archName').value = a.name;
+    $('archInfo').textContent = items.length + ' ' + (items.length === 1 ? w[0] : w[1]) + ', archived ' + niceDate(toISO(new Date(a.created))) + '.';
+    $('archRestore').textContent = 'Bring back to ' + w[2];
+    disarmArchDelete();
+    var rows = $('archRows');
+    rows.textContent = '';
+    if (a.tab === 'litters') {
+      items.slice().sort(function (x, y) { return String(x.num).localeCompare(String(y.num), undefined, { numeric: true }); })
+        .forEach(function (l) { rows.appendChild(frozenRow(makeLitterRow(l))); });
+    } else {
+      sorted(items).forEach(function (r) { rows.appendChild(frozenRow(makeRow(r, true, function () {}))); });
+    }
+    $('archSheet').scrollTop = 0;
+  }
+  $('archBack').addEventListener('click', function () {
+    if (archNow) openArchives(); else $('archSheet').hidden = true;
+  });
+  $('archRenameForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    if (!archNow) return;
+    var name = tidy($('archName').value).slice(0, 40);
+    if (!name) { toast('Give the archive a name'); return; }
+    archNow.name = name; archNow.updated = Date.now();
+    save();
+    $('archTitle').textContent = name;
+    toast('Renamed');
+  });
+  $('archRestore').addEventListener('click', function () {
+    if (!archNow) return;
+    var a = archNow, n = restoreArchive(a);
+    save(); render(); showLastBackup();
+    openArchives();
+    toast('Brought back ' + n + ' to ' + (TAB_WORDS[a.tab] || TAB_WORDS.breeding)[2]);
+  });
+  $('archDelete').addEventListener('click', function () {
+    if (!archNow) return;
+    if (!archArmed) {
+      archArmed = true;
+      $('archDelete').classList.add('armed');
+      $('archDelete').textContent = 'Tap again to delete for good';
+      archArmTimer = setTimeout(disarmArchDelete, 4000);
+      return;
+    }
+    deleteArchive(archNow);
+    save(); render(); showLastBackup();
+    openArchives();
+    toast('Archive deleted');
+  });
+
   /* ---------- Tapped an entry in a main list: edit it, or open the sow ---------- */
   var chosen = null;
   function openChoice(r) {
@@ -1353,6 +1578,10 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
     $('manualBtn').hidden = tab !== 'breeding';
     $('manualHeatBtn').hidden = tab !== 'heat';
     $('manualLitterBtn').hidden = !isLitters;
+    $('optBtn').hidden = !(tab === 'breeding' || tab === 'heat' || isLitters);
+    $('archCount').textContent = data.archives.length
+      ? plural(data.archives.length, 'archive') + ' saved. To archive more, open Breeding, Heat or Litters and tap Options.'
+      : 'Finished seasons you have put away. To archive, open Breeding, Heat or Litters and tap Options.';
     searchEl.placeholder = isLitters || isVacc ? 'Find a litter, sire or dam' : 'Find a sow';
     listEl.hidden = isDue || isHome || isVacc;
     $('vaccView').hidden = !isVacc;
@@ -1628,27 +1857,31 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
   });
 
   /* ---------- Backup: spreadsheet export and restore ---------- */
-  var CSV_HEAD = ['Type', 'Sow', 'Date', 'Time', 'Boar', 'Heat stage', 'Next heat expected', 'Expected farrowing', 'Litter number', 'Males', 'Females', 'Notes', 'Parasail given', 'Vaccinated', 'Weaned', 'Number weaned'];
+  var CSV_HEAD = ['Type', 'Sow', 'Date', 'Time', 'Boar', 'Heat stage', 'Next heat expected', 'Expected farrowing', 'Litter number', 'Males', 'Females', 'Notes', 'Parasail given', 'Vaccinated', 'Weaned', 'Number weaned', 'Archive'];
   function csvCell(v) {
     v = String(v == null ? '' : v);
     return /[",\r\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
   }
+  function csvRow(r, archName) {
+    if (r.kind === 'litter') {
+      // Litters: the dam goes in the Sow column, the sire in the Boar column, the farrowing date in Date
+      return ['Litter', r.dam, r.date || '', '', r.sire, '', '', '', r.num, r.males == null ? '' : r.males, r.females == null ? '' : r.females, r.notes || '',
+        taskDone(r, 'parasail'), taskDone(r, 'vacc'), r.weaned || '', r.weanedCount == null ? '' : r.weanedCount, archName];
+    }
+    var heat = isHeat(r);
+    return [
+      heat ? 'Heat' : 'Breeding', r.sow, r.date, heat ? niceTime(r) : '',
+      heat ? '' : r.boar, heat ? STAGES[r.type] : '',
+      heat && r.type !== 'standing' ? '' : plusDays(r.date, HEAT_DAYS),
+      heat ? '' : plusDays(r.date, FARROW_DAYS), '', '', '', '', '', '', '', '', archName
+    ];
+  }
   function buildCSV() {
-    var rows = sorted(everything()).map(function (r) {
-      var heat = isHeat(r);
-      return [
-        heat ? 'Heat' : 'Breeding', r.sow, r.date, heat ? niceTime(r) : '',
-        heat ? '' : r.boar, heat ? STAGES[r.type] : '',
-        heat && r.type !== 'standing' ? '' : plusDays(r.date, HEAT_DAYS),
-        heat ? '' : plusDays(r.date, FARROW_DAYS), '', '', '', '', '', '', '', ''
-      ];
+    var rows = sorted(everything()).concat(sortedLitters()).map(function (r) { return csvRow(r, ''); });
+    data.archives.forEach(function (a) {
+      archiveItems(a).forEach(function (r) { rows.push(csvRow(r, a.name)); });
     });
-    // Litters: the dam goes in the Sow column, the sire in the Boar column, the farrowing date in Date
-    rows = rows.concat(sortedLitters().map(function (l) {
-      return ['Litter', l.dam, l.date || '', '', l.sire, '', '', '', l.num, l.males == null ? '' : l.males, l.females == null ? '' : l.females, l.notes || '',
-        taskDone(l, 'parasail'), taskDone(l, 'vacc'), l.weaned || '', l.weanedCount == null ? '' : l.weanedCount];
-    }));
-    return '\uFEFF' + [CSV_HEAD].concat(rows).map(function (r) { return r.map(csvCell).join(','); }).join('\r\n') + '\r\n';
+    return '﻿' + [CSV_HEAD].concat(rows).map(function (r) { return r.map(csvCell).join(','); }).join('\r\n') + '\r\n';
   }
   function parseCSV(text) {
     var rows = [], row = [], cell = '', q = false, i, c;
@@ -1700,16 +1933,26 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
     if (col.Type < 0 || col.Sow < 0 || col.Date < 0) return { added: 0, skipped: 0, bad: 0, ok: false };
     function get(r, h) { return col[h] >= 0 && r[col[h]] != null ? String(r[col[h]]).trim() : ''; }
     var added = 0, skipped = 0, bad = 0, stamp = Date.now();
+    // An entry that was in a named archive goes back into an archive of that name
+    function place(rec, archName, t) {
+      rec.id = newId(); rec.created = stamp++; rec.updated = rec.created;
+      if (archName) {
+        var a = data.archives.filter(function (x) { return x.tab === t && key(x.name) === key(archName); })[0] || makeArchive(archName, t);
+        rec.arch = a.id;
+        data.archived.push(rec);
+      } else tabList(t).push(rec);
+      added++;
+    }
     rows.slice(1).forEach(function (r) {
-      var sow = tidy(get(r, 'Sow')), date = readDate(get(r, 'Date')), type = key(get(r, 'Type')), rec;
+      var sow = tidy(get(r, 'Sow')), date = readDate(get(r, 'Date')), type = key(get(r, 'Type')), archName = tidy(get(r, 'Archive')), rec;
       if (type === 'litter') {
         var oldLine = head.indexOf('dam breeding') >= 0 ? tidy(String(r[head.indexOf('dam breeding')] || '')) : '';   // files from version 10
         var lit = { kind: 'litter', num: tidy(get(r, 'Litter number')), sire: tidy(get(r, 'Boar')), dam: tidy(sow + ' ' + oldLine), line: '', males: count(get(r, 'Males')), females: count(get(r, 'Females')), date: date, notes: tidy(get(r, 'Notes')),
           done: { parasail: readDate(get(r, 'Parasail given')), vacc: readDate(get(r, 'Vaccinated')) }, weaned: readDate(get(r, 'Weaned')), weanedCount: count(get(r, 'Number weaned')) };
         if (!lit.num || !lit.dam || !lit.sire) { bad++; return; }
-        if (data.litters.some(function (o) { return key(o.num) === key(lit.num) && key(o.dam) === key(lit.dam) && key(o.sire) === key(lit.sire); })) { skipped++; return; }
-        lit.id = newId(); lit.created = stamp++; lit.updated = lit.created;
-        data.litters.push(lit); added++;
+        var litters = data.litters.concat(data.archived.filter(function (o) { return o.kind === 'litter'; }));
+        if (litters.some(function (o) { return key(o.num) === key(lit.num) && key(o.dam) === key(lit.dam) && key(o.sire) === key(lit.sire) && (o.date || '') === (lit.date || ''); })) { skipped++; return; }
+        place(lit, archName, 'litters');
         return;
       }
       if (!sow || !date) { bad++; return; }
@@ -1722,10 +1965,9 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
       } else if (type === 'breeding') {
         rec = { sow: sow, boar: tidy(get(r, 'Boar')), date: date };
       } else { bad++; return; }
-      if (everything().some(function (o) { return sameEntry(o, rec); })) { skipped++; return; }
-      rec.id = newId(); rec.created = stamp++; rec.updated = rec.created;
-      (isHeat(rec) ? data.heats : data.breedings).push(rec);
-      added++;
+      var pool = everything().concat(data.archived.filter(function (o) { return o.kind !== 'litter'; }));
+      if (pool.some(function (o) { return sameEntry(o, rec); })) { skipped++; return; }
+      place(rec, archName, isHeat(rec) ? 'heat' : 'breeding');
     });
     return { added: added, skipped: skipped, bad: bad, ok: true };
   }
@@ -1965,7 +2207,7 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
   }
   var shareTimer;
   function shareSoon() { clearTimeout(shareTimer); shareTimer = setTimeout(syncShare, 1500); }
-  function busyEditing() { return !$('sheet').hidden || !$('choice').hidden || !$('litterSheet').hidden || !$('litterView').hidden || !$('taskSheet').hidden; }
+  function busyEditing() { return !$('sheet').hidden || !$('choice').hidden || !$('litterSheet').hidden || !$('litterView').hidden || !$('taskSheet').hidden || !$('optSheet').hidden || !$('archSheet').hidden; }
 
   // Take what the service sent and fold it into this phone's copy. Newest change wins.
   function applyShared(records) {
@@ -1978,10 +2220,12 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
       if (!have || stampOf(r) > stampOf(have)) { mine[r.id] = r; changed = true; }
     });
     if (!changed) return false;
-    data.breedings = []; data.heats = []; data.litters = []; data.gone = [];
+    data.breedings = []; data.heats = []; data.litters = []; data.gone = []; data.archives = []; data.archived = [];
     Object.keys(mine).forEach(function (id) {
       var r = mine[id];
       if (r.deleted) data.gone.push({ id: r.id, updated: r.updated });
+      else if (r.kind === 'archive') data.archives.push(r);
+      else if (r.arch) data.archived.push(r);
       else if (r.kind === 'litter') { if (r.line) { r.dam = tidy(r.dam + ' ' + r.line); r.line = ''; } data.litters.push(r); }
       else if (isHeat(r)) data.heats.push(r);
       else data.breedings.push(r);
