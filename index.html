@@ -201,19 +201,19 @@ input[type="text"], input[type="search"], input[type="date"], input[type="time"]
 body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
 .nav {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 15;
-  display: grid; grid-template-columns: repeat(5, 1fr);
+  display: grid; grid-template-columns: repeat(6, 1fr);
   background: var(--surface); border-top: 2px solid var(--line);
   padding-bottom: env(safe-area-inset-bottom, 0px);
   padding-left: env(safe-area-inset-left, 0px); padding-right: env(safe-area-inset-right, 0px);
 }
 .nav button {
   min-height: 68px; border: 0; background: transparent; color: var(--muted);
-  font-weight: 700; font-size: 13px; padding: 6px 0; white-space: nowrap;
+  font-weight: 700; font-size: 12px; padding: 6px 0; white-space: nowrap; letter-spacing: -0.01em;
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
 }
 .nav svg { width: 28px; height: 28px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .nav button.on { color: var(--ink); box-shadow: inset 0 5px 0 var(--go); }
-.nav .badge { position: absolute; top: 6px; margin-left: 30px; min-width: 22px; height: 22px; padding: 0 6px; border-radius: 11px; background: var(--tag); color: var(--tag-ink); font-size: 13px; line-height: 22px; font-weight: 800; }
+.nav .badge { position: absolute; top: 6px; margin-left: 28px; min-width: 22px; height: 22px; padding: 0 6px; border-radius: 11px; background: var(--tag); color: var(--tag-ink); font-size: 13px; line-height: 22px; font-weight: 800; }
 .nav button { position: relative; }
 .toast { bottom: calc(96px + env(safe-area-inset-bottom, 0px)) !important; }
 .splash { position: fixed; inset: 0; z-index: 50; background: #ffffff; display: flex; align-items: center; justify-content: center; pointer-events: none; animation: splashOut 0.35s ease 0.85s forwards; }
@@ -242,6 +242,7 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
 .lnum { display: inline-block; min-width: 52px; max-width: 110px; padding: 8px 10px; border-radius: 10px; background: var(--ink); color: var(--bg); font-weight: 800; font-size: 20px; text-align: center; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 .lnum.big { font-size: 30px; padding: 12px 16px; flex: none; }
 .dates b.plain { font-weight: 600; overflow-wrap: anywhere; }
+.row.done { opacity: 0.72; }
 .version { text-align: center; color: var(--muted); font-size: 14px; margin: 0; }
 .empty {
   border: 2px dashed var(--line);
@@ -343,6 +344,16 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
       <li>&ldquo;118 went out yesterday&rdquo;</li>
     </ul>
   </div>
+  <div class="due" id="vaccView" hidden>
+    <p class="none" id="vaccIntro">Each litter with a farrowing date gets three jobs: Parasail at 10 days old, then vaccinations and weaning at 3 weeks old. Tap a job to mark it done.</p>
+    <p class="none" id="vaccNoDate" hidden></p>
+    <h2>To do</h2>
+    <ul class="list" id="vaccTodo"></ul>
+    <p class="none" id="vaccTodoNone">Nothing to do right now.</p>
+    <h2>Done</h2>
+    <ul class="list" id="vaccDone"></ul>
+    <p class="none" id="vaccDoneNone">Nothing marked done yet.</p>
+  </div>
   <div class="due" id="dueView" hidden>
     <h2>Due back in heat</h2>
     <ul class="list" id="dueHeat"></ul>
@@ -388,7 +399,7 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
     <p class="hint">Makes a calendar file with each sow's expected return to heat and farrowing date, with an alert at 6 AM that day.</p>
     <p class="hint" id="fileLink" hidden></p>
   </section>
-  <p class="version" id="version">Version 11</p>
+  <p class="version" id="version">Version 12</p>
 </div>
 
 <div class="wrap" id="sowView" hidden>
@@ -412,6 +423,7 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
   <button type="button" data-go="breeding"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14v16H5zM9 9h6M9 13h6M9 17h3"/></svg>Breeding</button>
   <button type="button" data-go="heat"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3c1 4 5 6 5 11a5 5 0 0 1-10 0c0-2 1-3 2-4 0 2 1 3 2 3 0-4-1-6 1-10z"/></svg>Heat</button>
   <button type="button" data-go="due"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16v14H4zM4 10h16M8 3v4M16 3v4"/></svg>Coming in<span class="badge" id="navBadge" hidden></span></button>
+  <button type="button" data-go="vacc"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17 3l4 4M19 5l-3 3M14 6l4 4-8.5 8.5H5.5v-4zM9 11l2 2M4 20l1.5-1.5"/></svg>Vaccines<span class="badge" id="navBadgeV" hidden></span></button>
   <button type="button" data-go="litters"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11M4 6h.5M4 12h.5M4 18h.5"/></svg>Litters</button>
 </nav>
 
@@ -462,6 +474,30 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
   </form>
 </div>
 
+<div class="sheet" id="taskSheet" hidden>
+  <form id="taskForm" novalidate>
+    <h2 id="taskTitle">Litter</h2>
+    <p class="heard" id="taskInfo"></p>
+    <div class="field">
+      <label for="tDate" id="taskDateLabel">Date given</label>
+      <input type="date" id="tDate">
+      <div class="chips">
+        <button type="button" class="chip" data-tday="0">Today</button>
+        <button type="button" class="chip" data-tday="-1">Yesterday</button>
+      </div>
+    </div>
+    <div class="field" id="tCountField">
+      <label for="tCount">Number weaned (optional)</label>
+      <input type="text" id="tCount" autocomplete="off" inputmode="numeric" pattern="[0-9]*">
+    </div>
+    <div class="actions">
+      <button type="submit" class="btn go save" id="tSave">Mark done</button>
+      <button type="button" class="btn" id="tCancel">Cancel</button>
+      <button type="button" class="btn danger" id="tUndo" hidden>Mark as not done</button>
+    </div>
+  </form>
+</div>
+
 <div class="sheet" id="litterView" hidden>
   <form onsubmit="return false">
     <button type="button" class="btn" id="lvBack">&lsaquo; All litters</button>
@@ -504,7 +540,7 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
       </div>
     </div>
     <div class="field">
-      <label for="lDate">Farrowed (optional)</label>
+      <label for="lDate">Farrowed (needed for vaccine and weaning reminders)</label>
       <input type="date" id="lDate">
       <div class="chips">
         <button type="button" class="chip" id="lToday">Today</button>
@@ -1046,6 +1082,13 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
     line('Females', l.females === '' || l.females == null ? '' : String(l.females));
     if (l.males !== '' && l.males != null && l.females !== '' && l.females != null) line('Total pigs', String(l.males + l.females));
     line('Farrowed', l.date ? niceDate(l.date) : '');
+    TASKS.forEach(function (t) {
+      var done = taskDone(l, t.k);
+      var text = !l.date ? 'Needs a farrowing date'
+        : done ? (t.k === 'wean' ? 'Weaned ' : 'Given ') + shortDate(done) + (t.k === 'wean' && l.weanedCount !== '' && l.weanedCount != null ? ', ' + l.weanedCount + ' pigs' : '')
+        : 'Due ' + niceDate(plusDays(l.date, t.day));
+      line(t.label + ' (' + t.age + ')', text);
+    });
     line('Notes', l.notes);
     $('lvDam').hidden = !damSow(l);
     $('litterView').hidden = false;
@@ -1135,6 +1178,96 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
     if (chosen) { setTab('litters'); openLitter({ sire: chosen.boar, dam: chosen.sow }); }
   });
 
+  /* ---------- Vaccines and weaning: jobs that come due as a litter gets older ---------- */
+  // Counted from the litter's farrowing date. Change the days here if the schedule changes.
+  var TASKS = [
+    { k: 'parasail', label: 'Parasail', day: 10, age: '10 days old' },
+    { k: 'vacc', label: 'Vaccinations', day: 21, age: '3 weeks old' },
+    { k: 'wean', label: 'Wean', day: 21, age: '3 weeks old' }
+  ];
+  function taskDone(l, k) { return k === 'wean' ? (l.weaned || '') : ((l.done && l.done[k]) || ''); }
+  function litterTasks() {
+    var out = [];
+    sortedLitters().forEach(function (l) {
+      if (!l.date) return;
+      TASKS.forEach(function (t) {
+        out.push({ l: l, t: t, due: plusDays(l.date, t.day), done: taskDone(l, t.k) });
+      });
+    });
+    return out;
+  }
+  function openTasks() { return litterTasks().filter(function (x) { return !x.done; }); }
+  function makeTaskRow(x) {
+    var left = daysUntil(x.due);
+    var li = el('li');
+    var b = el('button', 'row' + (x.done ? ' done' : left < 0 ? ' late' : left <= 1 ? ' soon' : ''));
+    b.type = 'button';
+    b.appendChild(el('span', 'lnum', x.l.num));
+    var who = el('span', 'who');
+    who.appendChild(el('b', '', x.t.label));
+    who.appendChild(el('small', '', pedigree(x.l)));
+    b.appendChild(who);
+    var when = el('span', 'when');
+    if (x.done) {
+      when.appendChild(el('b', '', 'Done'));
+      when.appendChild(document.createTextNode(shortDate(x.done) + (x.t.k === 'wean' && x.l.weanedCount !== '' && x.l.weanedCount != null ? ', ' + x.l.weanedCount + ' pigs' : '')));
+    } else {
+      when.appendChild(el('b', left < 0 ? 'late' : left <= 1 ? 'soon' : '', niceDate(x.due)));
+      when.appendChild(document.createTextNode(dueText(x.due)));
+    }
+    b.appendChild(when);
+    b.addEventListener('click', function () { openTask(x); });
+    li.appendChild(b);
+    return li;
+  }
+  var taskNow = null;
+  function openTask(x) {
+    taskNow = x;
+    var wean = x.t.k === 'wean';
+    $('taskTitle').textContent = 'Litter ' + x.l.num + ': ' + x.t.label;
+    $('taskInfo').textContent = pedigree(x.l) + '. Farrowed ' + niceDate(x.l.date) + '. Due ' + niceDate(x.due) + ' (' + x.t.age + ').';
+    $('taskDateLabel').textContent = wean ? 'Date weaned' : 'Date given';
+    $('tDate').value = x.done || toISO(new Date());
+    $('tCountField').hidden = !wean;
+    $('tCount').value = wean && x.l.weanedCount != null ? x.l.weanedCount : '';
+    $('tSave').textContent = x.done ? 'Save' : wean ? 'Mark weaned' : 'Mark done';
+    $('tUndo').hidden = !x.done;
+    $('taskSheet').hidden = false;
+    $('taskSheet').scrollTop = 0;
+  }
+  function closeTask() { $('taskSheet').hidden = true; taskNow = null; }
+  $('tCancel').addEventListener('click', closeTask);
+  Array.prototype.forEach.call(document.querySelectorAll('[data-tday]'), function (c) {
+    c.addEventListener('click', function () { $('tDate').value = toISO(addDays(new Date(), +c.getAttribute('data-tday'))); });
+  });
+  function setTask(dateValue) {
+    var x = taskNow, l = x.l;
+    if (x.t.k === 'wean') {
+      l.weaned = dateValue;
+      l.weanedCount = dateValue ? count($('tCount').value) : '';
+    } else {
+      if (!l.done) l.done = {};
+      l.done[x.t.k] = dateValue;
+    }
+    l.updated = Date.now();
+    var ok = save();
+    closeTask();
+    render();
+    return ok;
+  }
+  $('taskForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    if (!taskNow) return;
+    if (!$('tDate').value) { toast('Pick a date'); return; }
+    var label = 'Litter ' + taskNow.l.num + ': ' + taskNow.t.label.toLowerCase() + ' done';
+    if (setTask($('tDate').value)) { flashSaved(); toast(label); }
+  });
+  $('tUndo').addEventListener('click', function () {
+    if (!taskNow) return;
+    setTask('');
+    toast('Marked as not done');
+  });
+
   /* ---------- Tapped an entry in a main list: edit it, or open the sow ---------- */
   var chosen = null;
   function openChoice(r) {
@@ -1162,7 +1295,7 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
 
   // Which screen is showing: home, breeding, heat or due (Coming in)
   var tab = 'home';
-  var TITLES = { breeding: 'Breedings', heat: 'Heat', due: 'Coming in', litters: 'Litters' };
+  var TITLES = { breeding: 'Breedings', heat: 'Heat', due: 'Coming in', litters: 'Litters', vacc: 'Vaccines' };
   function setTab(t) {
     if (currentSow != null) closeSow();
     tab = t;
@@ -1178,30 +1311,35 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
   Array.prototype.forEach.call(document.querySelectorAll('#nav button'), function (b) {
     b.addEventListener('click', function () { setTab(b.getAttribute('data-go')); });
   });
-  $('dueAlert').addEventListener('click', function () { setTab('due'); });
+  $('dueAlert').addEventListener('click', function () { setTab($('dueAlert').getAttribute('data-to') || 'due'); });
 
   function render() {
     renderSow();
     var q = key(searchEl.value);
     function match(r) { return !q || key(r.sow).indexOf(q) !== -1; }
     function matchLitter(l) { return !q || key(l.num + ' ' + pedigree(l)).indexOf(q) !== -1; }
-    var isLitters = tab === 'litters';
+    var isLitters = tab === 'litters', isVacc = tab === 'vacc';
+    var jobs = litterTasks();
+    var jobsOpen = jobs.filter(function (x) { return !x.done; });
+    var soonT = jobsOpen.filter(function (x) { return daysUntil(x.due) <= 1; }).length;
     var due = comingIn();
 
     // Yellow bar at the top when a sow needs watching now (overdue, today or tomorrow)
     var soonH = due.heat.filter(function (o) { return daysUntil(o.nextHeat) <= 1; }).length;
     var soonF = due.farrow.filter(function (o) { return daysUntil(o.farrow) <= 1; }).length;
     var bar = $('dueAlert');
-    bar.hidden = soonH + soonF === 0;
+    bar.hidden = soonH + soonF + soonT === 0;
+    bar.setAttribute('data-to', soonH + soonF ? 'due' : 'vacc');
     bar.textContent = '';
-    if (soonH + soonF) {
+    if (soonH + soonF + soonT) {
       var parts = [];
       if (soonH) parts.push(plural(soonH, 'sow') + ' due back in heat');
       if (soonF) parts.push(soonF + ' due to farrow');
+      if (soonT) parts.push(plural(soonT, 'litter job') + ' due');
       bar.appendChild(document.createTextNode(parts.join(', ')));
       bar.appendChild(el('small', '', 'Now or by tomorrow. Tap to see.'));
     }
-    try { if (navigator.setAppBadge) { if (soonH + soonF) navigator.setAppBadge(soonH + soonF); else navigator.clearAppBadge(); } } catch (e) {}
+    try { if (navigator.setAppBadge) { if (soonH + soonF + soonT) navigator.setAppBadge(soonH + soonF + soonT); else navigator.clearAppBadge(); } } catch (e) {}
 
     var isDue = tab === 'due', isHome = tab === 'home';
     $('homeLogo').hidden = !isHome;
@@ -1215,8 +1353,23 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
     $('manualBtn').hidden = tab !== 'breeding';
     $('manualHeatBtn').hidden = tab !== 'heat';
     $('manualLitterBtn').hidden = !isLitters;
-    searchEl.placeholder = isLitters ? 'Find a litter, sire or dam' : 'Find a sow';
-    listEl.hidden = isDue || isHome;
+    searchEl.placeholder = isLitters || isVacc ? 'Find a litter, sire or dam' : 'Find a sow';
+    listEl.hidden = isDue || isHome || isVacc;
+    $('vaccView').hidden = !isVacc;
+    if (isVacc) {
+      var mt = function (x) { return matchLitter(x.l); };
+      var todo = jobsOpen.filter(mt).sort(function (a, b) { return a.due < b.due ? -1 : a.due > b.due ? 1 : 0; });
+      var done = jobs.filter(function (x) { return x.done; }).filter(mt).sort(function (a, b) { return a.done < b.done ? 1 : a.done > b.done ? -1 : 0; });
+      $('vaccTodo').textContent = ''; $('vaccDone').textContent = '';
+      todo.forEach(function (x) { $('vaccTodo').appendChild(makeTaskRow(x)); });
+      done.forEach(function (x) { $('vaccDone').appendChild(makeTaskRow(x)); });
+      $('vaccTodoNone').hidden = todo.length > 0;
+      $('vaccDoneNone').hidden = done.length > 0;
+      var undated = data.litters.filter(function (l) { return !l.date; }).length;
+      $('vaccNoDate').hidden = !undated;
+      $('vaccNoDate').textContent = undated ? plural(undated, 'litter') + (undated === 1 ? ' has' : ' have') + ' no farrowing date, so no jobs are listed for ' + (undated === 1 ? 'it' : 'them') + '. Add the date on the Litters screen.' : '';
+      $('vaccIntro').hidden = jobs.length > 0;
+    }
     $('dueView').hidden = !isDue;
     listEl.textContent = '';
     var all = [], rows = [];
@@ -1232,7 +1385,7 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
       rows = all.filter(matchLitter);
       rows.forEach(function (l) { listEl.appendChild(makeLitterRow(l)); });
     } else {
-      all = isHome ? [] : sorted(tab === 'heat' ? data.heats : data.breedings);
+      all = isHome || isVacc ? [] : sorted(tab === 'heat' ? data.heats : data.breedings);
       rows = all.filter(match);
       rows.forEach(function (r) {
         listEl.appendChild(makeRow(r, true, function () { openChoice(r); }));
@@ -1244,9 +1397,12 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
     $('nomatch').hidden = !(!isDue && all.length > 0 && rows.length === 0);
     var nb = data.breedings.length, nh = data.heats.length;
     var nDue = due.heat.length + due.farrow.length;
-    $('count').textContent = tab === 'breeding' ? plural(nb, 'breeding') : tab === 'heat' ? plural(nh, 'heat record') : tab === 'due' ? nDue + ' due' : isLitters ? plural(data.litters.length, 'litter') : '';
+    $('count').textContent = tab === 'breeding' ? plural(nb, 'breeding') : tab === 'heat' ? plural(nh, 'heat record') : tab === 'due' ? nDue + ' due' : isLitters ? plural(data.litters.length, 'litter') : isVacc ? jobsOpen.length + ' to do' : '';
     $('navBadge').hidden = !nDue;
     $('navBadge').textContent = nDue;
+    var nJobs = jobsOpen.filter(function (x) { return daysUntil(x.due) <= 3; }).length;
+    $('navBadgeV').hidden = !nJobs;
+    $('navBadgeV').textContent = nJobs;
   }
   searchEl.addEventListener('input', render);
 
@@ -1472,7 +1628,7 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
   });
 
   /* ---------- Backup: spreadsheet export and restore ---------- */
-  var CSV_HEAD = ['Type', 'Sow', 'Date', 'Time', 'Boar', 'Heat stage', 'Next heat expected', 'Expected farrowing', 'Litter number', 'Males', 'Females', 'Notes'];
+  var CSV_HEAD = ['Type', 'Sow', 'Date', 'Time', 'Boar', 'Heat stage', 'Next heat expected', 'Expected farrowing', 'Litter number', 'Males', 'Females', 'Notes', 'Parasail given', 'Vaccinated', 'Weaned', 'Number weaned'];
   function csvCell(v) {
     v = String(v == null ? '' : v);
     return /[",\r\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
@@ -1484,12 +1640,13 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
         heat ? 'Heat' : 'Breeding', r.sow, r.date, heat ? niceTime(r) : '',
         heat ? '' : r.boar, heat ? STAGES[r.type] : '',
         heat && r.type !== 'standing' ? '' : plusDays(r.date, HEAT_DAYS),
-        heat ? '' : plusDays(r.date, FARROW_DAYS), '', '', '', ''
+        heat ? '' : plusDays(r.date, FARROW_DAYS), '', '', '', '', '', '', '', ''
       ];
     });
     // Litters: the dam goes in the Sow column, the sire in the Boar column, the farrowing date in Date
     rows = rows.concat(sortedLitters().map(function (l) {
-      return ['Litter', l.dam, l.date || '', '', l.sire, '', '', '', l.num, l.males == null ? '' : l.males, l.females == null ? '' : l.females, l.notes || ''];
+      return ['Litter', l.dam, l.date || '', '', l.sire, '', '', '', l.num, l.males == null ? '' : l.males, l.females == null ? '' : l.females, l.notes || '',
+        taskDone(l, 'parasail'), taskDone(l, 'vacc'), l.weaned || '', l.weanedCount == null ? '' : l.weanedCount];
     }));
     return '\uFEFF' + [CSV_HEAD].concat(rows).map(function (r) { return r.map(csvCell).join(','); }).join('\r\n') + '\r\n';
   }
@@ -1547,7 +1704,8 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
       var sow = tidy(get(r, 'Sow')), date = readDate(get(r, 'Date')), type = key(get(r, 'Type')), rec;
       if (type === 'litter') {
         var oldLine = head.indexOf('dam breeding') >= 0 ? tidy(String(r[head.indexOf('dam breeding')] || '')) : '';   // files from version 10
-        var lit = { kind: 'litter', num: tidy(get(r, 'Litter number')), sire: tidy(get(r, 'Boar')), dam: tidy(sow + ' ' + oldLine), line: '', males: count(get(r, 'Males')), females: count(get(r, 'Females')), date: date, notes: tidy(get(r, 'Notes')) };
+        var lit = { kind: 'litter', num: tidy(get(r, 'Litter number')), sire: tidy(get(r, 'Boar')), dam: tidy(sow + ' ' + oldLine), line: '', males: count(get(r, 'Males')), females: count(get(r, 'Females')), date: date, notes: tidy(get(r, 'Notes')),
+          done: { parasail: readDate(get(r, 'Parasail given')), vacc: readDate(get(r, 'Vaccinated')) }, weaned: readDate(get(r, 'Weaned')), weanedCount: count(get(r, 'Number weaned')) };
         if (!lit.num || !lit.dam || !lit.sire) { bad++; return; }
         if (data.litters.some(function (o) { return key(o.num) === key(lit.num) && key(o.dam) === key(lit.dam) && key(o.sire) === key(lit.sire); })) { skipped++; return; }
         lit.id = newId(); lit.created = stamp++; lit.updated = lit.created;
@@ -1598,6 +1756,9 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
       var bredNote = o.bred ? 'Bred ' + niceDate(o.bred.date) + ' to ' + o.bred.boar + '.' : 'Not bred. Last heat ' + niceDate(o.lastHeat) + '.';
       add('heat', o, o.nextHeat, o.sow + ' due back in heat' + (o.bred ? ' (bred to ' + o.bred.boar + ')' : ''), bredNote + ' 21 days after her last heat.');
       if (o.farrow) add('farrow', o, o.farrow, o.sow + ' due to farrow', bredNote + ' 114 days after breeding.');
+    });
+    openTasks().forEach(function (x) {
+      add(x.t.k, { sow: 'litter-' + x.l.id }, x.due, 'Litter ' + x.l.num + ': ' + x.t.label.toLowerCase(), pedigree(x.l) + '. ' + x.t.age + ', farrowed ' + niceDate(x.l.date) + '.');
     });
     lines.push('END:VCALENDAR');
     return { text: lines.join('\r\n') + '\r\n', count: count };
@@ -1676,6 +1837,18 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
       var how = o.bred ? 'Bred to ' + o.bred.boar + ' on ' + shortDate(o.bred.date) : 'Not bred. Last heat ' + shortDate(o.lastHeat);
       if (daysUntil(o.nextHeat) >= 0) out.push({ date: o.nextHeat, title: o.sow + ' due back in heat', body: how });
       if (o.farrow && daysUntil(o.farrow) >= 0) out.push({ date: o.farrow, title: o.sow + ' due to farrow', body: how });
+    });
+    // Litter jobs: one reminder per litter per day, e.g. "Litter 1: vaccinations and wean"
+    var byDay = {};
+    openTasks().forEach(function (x) {
+      if (daysUntil(x.due) < 0) return;
+      var k = x.l.id + '|' + x.due;
+      if (!byDay[k]) byDay[k] = { l: x.l, due: x.due, labels: [], age: x.t.age };
+      byDay[k].labels.push(x.t.label.toLowerCase());
+    });
+    Object.keys(byDay).forEach(function (k) {
+      var j = byDay[k];
+      out.push({ date: j.due, title: 'Litter ' + j.l.num + ': ' + j.labels.join(' and '), body: pedigree(j.l) + ', ' + j.age });
     });
     return out;
   }
@@ -1792,7 +1965,7 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
   }
   var shareTimer;
   function shareSoon() { clearTimeout(shareTimer); shareTimer = setTimeout(syncShare, 1500); }
-  function busyEditing() { return !$('sheet').hidden || !$('choice').hidden || !$('litterSheet').hidden || !$('litterView').hidden; }
+  function busyEditing() { return !$('sheet').hidden || !$('choice').hidden || !$('litterSheet').hidden || !$('litterView').hidden || !$('taskSheet').hidden; }
 
   // Take what the service sent and fold it into this phone's copy. Newest change wins.
   function applyShared(records) {
