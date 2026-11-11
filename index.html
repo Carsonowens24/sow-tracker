@@ -201,19 +201,19 @@ input[type="text"], input[type="search"], input[type="date"], input[type="time"]
 body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
 .nav {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 15;
-  display: grid; grid-template-columns: repeat(4, 1fr);
+  display: grid; grid-template-columns: repeat(5, 1fr);
   background: var(--surface); border-top: 2px solid var(--line);
   padding-bottom: env(safe-area-inset-bottom, 0px);
   padding-left: env(safe-area-inset-left, 0px); padding-right: env(safe-area-inset-right, 0px);
 }
 .nav button {
   min-height: 68px; border: 0; background: transparent; color: var(--muted);
-  font-weight: 700; font-size: 15px; padding: 6px 2px;
+  font-weight: 700; font-size: 13px; padding: 6px 0; white-space: nowrap;
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
 }
 .nav svg { width: 28px; height: 28px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .nav button.on { color: var(--ink); box-shadow: inset 0 5px 0 var(--go); }
-.nav .badge { position: absolute; top: 6px; margin-left: 34px; min-width: 22px; height: 22px; padding: 0 6px; border-radius: 11px; background: var(--tag); color: var(--tag-ink); font-size: 13px; line-height: 22px; font-weight: 800; }
+.nav .badge { position: absolute; top: 6px; margin-left: 30px; min-width: 22px; height: 22px; padding: 0 6px; border-radius: 11px; background: var(--tag); color: var(--tag-ink); font-size: 13px; line-height: 22px; font-weight: 800; }
 .nav button { position: relative; }
 .toast { bottom: calc(96px + env(safe-area-inset-bottom, 0px)) !important; }
 .splash { position: fixed; inset: 0; z-index: 50; background: #ffffff; display: flex; align-items: center; justify-content: center; pointer-events: none; animation: splashOut 0.35s ease 0.85s forwards; }
@@ -239,6 +239,9 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
   .saved { animation: none; }
   .saved svg { animation: none; stroke-dashoffset: 0; }
 }
+.lnum { display: inline-block; min-width: 52px; max-width: 110px; padding: 8px 10px; border-radius: 10px; background: var(--ink); color: var(--bg); font-weight: 800; font-size: 20px; text-align: center; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.lnum.big { font-size: 30px; padding: 12px 16px; flex: none; }
+.dates b.plain { font-weight: 600; overflow-wrap: anywhere; }
 .version { text-align: center; color: var(--muted); font-size: 14px; margin: 0; }
 .empty {
   border: 2px dashed var(--line);
@@ -313,6 +316,7 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
   <section class="listhead" id="listhead" aria-label="Records" hidden>
     <button type="button" class="btn go wide" id="manualBtn">Add breeding</button>
     <button type="button" class="btn go wide" id="manualHeatBtn">Add heat</button>
+    <button type="button" class="btn go wide" id="manualLitterBtn">Add litter</button>
     <input type="search" id="search" placeholder="Find a sow" autocomplete="off" aria-label="Find a sow">
   </section>
   <ul class="list" id="list"></ul>
@@ -323,6 +327,13 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
       <li>&ldquo;Rosie bred to Hang Time today&rdquo;</li>
       <li>&ldquo;Bred sow 12-4 to Big Red yesterday&rdquo;</li>
     </ul>
+  </div>
+  <div class="empty" id="emptyLitters" hidden>
+    <p>No litters yet. Tap Add litter and fill in its number and pedigree, for example:</p>
+    <ul>
+      <li>1 &nbsp; Hang Time &times; 10-7 QF</li>
+    </ul>
+    <p>You can also tap a breeding on the Breeding screen and choose &ldquo;Add a litter from this breeding&rdquo;.</p>
   </div>
   <div class="empty" id="emptyHeat" hidden>
     <p>No heat records yet. Tap Add heat, or go to Home, tap the microphone and say:</p>
@@ -377,7 +388,7 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
     <p class="hint">Makes a calendar file with each sow's expected return to heat and farrowing date, with an alert at 6 AM that day.</p>
     <p class="hint" id="fileLink" hidden></p>
   </section>
-  <p class="version" id="version">Version 9</p>
+  <p class="version" id="version">Version 10</p>
 </div>
 
 <div class="wrap" id="sowView" hidden>
@@ -401,6 +412,7 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
   <button type="button" data-go="breeding"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14v16H5zM9 9h6M9 13h6M9 17h3"/></svg>Breeding</button>
   <button type="button" data-go="heat"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3c1 4 5 6 5 11a5 5 0 0 1-10 0c0-2 1-3 2-4 0 2 1 3 2 3 0-4-1-6 1-10z"/></svg>Heat</button>
   <button type="button" data-go="due"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16v14H4zM4 10h16M8 3v4M16 3v4"/></svg>Coming in<span class="badge" id="navBadge" hidden></span></button>
+  <button type="button" data-go="litters"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11M4 6h.5M4 12h.5M4 18h.5"/></svg>Litters</button>
 </nav>
 
 <div class="sheet" id="sheet" hidden>
@@ -450,6 +462,61 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
   </form>
 </div>
 
+<div class="sheet" id="litterView" hidden>
+  <form onsubmit="return false">
+    <button type="button" class="btn" id="lvBack">&lsaquo; All litters</button>
+    <div class="sowhead">
+      <span class="lnum big" id="lvNum"></span>
+      <p><b id="lvPed"></b>Litter</p>
+    </div>
+    <div class="dates" id="lvLines"></div>
+    <div class="actions">
+      <button type="button" class="btn go save" id="lvEdit">Edit litter</button>
+      <button type="button" class="btn" id="lvDam">See the dam's history</button>
+    </div>
+  </form>
+</div>
+
+<div class="sheet" id="litterSheet" hidden>
+  <form id="litterForm" novalidate>
+    <h2 id="litterTitle">New litter</h2>
+    <div class="field">
+      <label for="lNum">Litter number</label>
+      <input type="text" id="lNum" autocomplete="off" inputmode="numeric">
+    </div>
+    <div class="field">
+      <label for="lSire">Sire (boar)</label>
+      <input type="text" id="lSire" autocomplete="off" autocapitalize="words">
+      <div class="chips" id="lSireChips"></div>
+    </div>
+    <div class="field">
+      <label for="lDam">Dam (sow number, name or ear notch)</label>
+      <input type="text" id="lDam" autocomplete="off" autocapitalize="words" placeholder="10-7">
+    </div>
+    <div class="field">
+      <label for="lLine">Dam's breeding (optional)</label>
+      <input type="text" id="lLine" autocomplete="off" autocapitalize="characters" placeholder="QF">
+    </div>
+    <div class="field">
+      <label for="lDate">Farrowed (optional)</label>
+      <input type="date" id="lDate">
+      <div class="chips">
+        <button type="button" class="chip" id="lToday">Today</button>
+        <button type="button" class="chip" id="lNoDate">No date</button>
+      </div>
+    </div>
+    <div class="field">
+      <label for="lNotes">Notes (optional)</label>
+      <input type="text" id="lNotes" autocomplete="off" maxlength="300">
+    </div>
+    <div class="actions">
+      <button type="submit" class="btn go save" id="lSave">Save</button>
+      <button type="button" class="btn" id="lCancel">Cancel</button>
+      <button type="button" class="btn danger" id="lDelete" hidden>Delete this litter</button>
+    </div>
+  </form>
+</div>
+
 <div class="sheet" id="choice" hidden>
   <form onsubmit="return false">
     <div class="sowhead">
@@ -459,6 +526,7 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
     <div class="actions">
       <button type="button" class="btn go save" id="choiceEdit">Edit breeding</button>
       <button type="button" class="btn" id="choiceSow">See her history</button>
+      <button type="button" class="btn" id="choiceLitter">Add a litter from this breeding</button>
       <button type="button" class="btn" id="choiceCancel">Cancel</button>
     </div>
   </form>
@@ -660,7 +728,7 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
 
   /* ---------- Storage (stays on this phone) ---------- */
   var KEY = 'sowtracker.v1';
-  var data = { breedings: [], heats: [] };
+  var data = { breedings: [], heats: [], litters: [], gone: [] };
   var storageOK = true;
   function load() {
     try {
@@ -668,6 +736,7 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
       if (s) { var d = JSON.parse(s); if (d && Array.isArray(d.breedings)) data = d; }
     } catch (e) { storageOK = false; }
     if (!Array.isArray(data.heats)) data.heats = [];
+    if (!Array.isArray(data.litters)) data.litters = [];
     if (!Array.isArray(data.gone)) data.gone = [];   // deleted entries, remembered so sharing does not bring them back
   }
   // fromShare: the change came from another phone, so do not send it straight back
@@ -682,7 +751,8 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
   }
   function key(s) { return String(s || '').toLowerCase().replace(/\s+/g, ' ').trim(); }
   function isHeat(r) { return !!r.type; }
-  function everything() { return data.breedings.concat(data.heats); }
+  function everything() { return data.breedings.concat(data.heats); }   // breedings and heat records
+  function allRecords() { return everything().concat(data.litters); }     // plus litters: for backup and sharing
   // Reuse the spelling already on file, so "hang time" and "Hang Time" stay one boar.
   function matchKnown(value, field) {
     var k = key(value), all = field === 'sow' ? everything() : data.breedings;
@@ -897,6 +967,140 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
     openSheet('heat', { sow: $('sowTag').textContent, type: '', date: toISO(new Date()) }, null);
   });
 
+  /* ---------- Litters: a numbered list with each litter's pedigree ---------- */
+  function pedigree(l) { return l.sire + ' × ' + l.dam + (l.line ? ' ' + l.line : ''); }
+  function sortedLitters() {
+    return data.litters.slice().sort(function (a, b) {
+      return String(a.num).localeCompare(String(b.num), undefined, { numeric: true }) || a.created - b.created;
+    });
+  }
+  function nextLitterNumber() {
+    var max = 0;
+    data.litters.forEach(function (l) { var n = parseInt(l.num, 10); if (n > max) max = n; });
+    return String(max + 1);
+  }
+  function makeLitterRow(l) {
+    var li = el('li');
+    var b = el('button', 'row');
+    b.type = 'button';
+    b.appendChild(el('span', 'lnum', l.num));
+    var who = el('span', 'who');
+    who.appendChild(el('b', '', pedigree(l)));
+    if (l.notes) who.appendChild(el('small', '', l.notes));
+    b.appendChild(who);
+    var when = el('span', 'when');
+    if (l.date) { when.appendChild(el('b', '', shortDate(l.date))); when.appendChild(document.createTextNode('Farrowed')); }
+    b.appendChild(when);
+    b.addEventListener('click', function () { openLitterView(l); });
+    li.appendChild(b);
+    return li;
+  }
+  // One litter, with everything about it spelled out
+  var viewing = null;
+  function openLitterView(l) {
+    viewing = l;
+    $('lvNum').textContent = l.num;
+    $('lvPed').textContent = pedigree(l);
+    var box = $('lvLines');
+    box.textContent = '';
+    function line(label, value) {
+      var d = el('div');
+      d.appendChild(el('span', '', label));
+      d.appendChild(el('b', 'plain', value || 'Not entered'));
+      box.appendChild(d);
+    }
+    line('Litter number', l.num);
+    line('Sire (boar)', l.sire);
+    line('Dam (sow)', l.dam);
+    line("Dam's breeding", l.line);
+    line('Farrowed', l.date ? niceDate(l.date) : '');
+    line('Notes', l.notes);
+    var k = key(l.dam);
+    $('lvDam').hidden = !everything().some(function (r) { return key(r.sow) === k; });
+    $('litterView').hidden = false;
+    $('litterView').scrollTop = 0;
+  }
+  function closeLitterView() { $('litterView').hidden = true; viewing = null; }
+  $('lvBack').addEventListener('click', closeLitterView);
+  $('lvEdit').addEventListener('click', function () { var l = viewing; closeLitterView(); if (l) openLitter(l); });
+  $('lvDam').addEventListener('click', function () { var l = viewing; closeLitterView(); if (l) openSow(l.dam); });
+  var editingLitter = null, litterArmed = false, litterArmTimer;
+  function disarmLitterDelete() {
+    litterArmed = false; clearTimeout(litterArmTimer);
+    $('lDelete').classList.remove('armed');
+    $('lDelete').textContent = 'Delete this litter';
+  }
+  function openLitter(l) {
+    editingLitter = l && l.id ? l : null;
+    $('litterTitle').textContent = editingLitter ? 'Edit litter' : 'New litter';
+    $('lNum').value = l && l.num != null ? l.num : nextLitterNumber();
+    $('lSire').value = l && l.sire ? l.sire : '';
+    $('lDam').value = l && l.dam ? l.dam : '';
+    $('lLine').value = l && l.line ? l.line : '';
+    $('lDate').value = l && l.date ? l.date : '';
+    $('lNotes').value = l && l.notes ? l.notes : '';
+    ['lNum', 'lSire', 'lDam'].forEach(function (id) { $(id).classList.remove('missing'); });
+    $('lDelete').hidden = !editingLitter;
+    disarmLitterDelete();
+    var chips = $('lSireChips');
+    chips.textContent = '';
+    recentBoars().forEach(function (name) {
+      var c = el('button', 'chip', name);
+      c.type = 'button';
+      c.addEventListener('click', function () { $('lSire').value = name; $('lSire').classList.remove('missing'); });
+      chips.appendChild(c);
+    });
+    $('litterSheet').hidden = false;
+    $('litterSheet').scrollTop = 0;
+  }
+  function closeLitter() { $('litterSheet').hidden = true; editingLitter = null; }
+  $('lCancel').addEventListener('click', closeLitter);
+  $('lToday').addEventListener('click', function () { $('lDate').value = toISO(new Date()); });
+  $('lNoDate').addEventListener('click', function () { $('lDate').value = ''; });
+  $('manualLitterBtn').addEventListener('click', function () { openLitter(null); });
+  $('litterForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var num = tidy($('lNum').value), sire = tidy($('lSire').value), dam = tidy($('lDam').value);
+    $('lNum').classList.toggle('missing', !num);
+    $('lSire').classList.toggle('missing', !sire);
+    $('lDam').classList.toggle('missing', !dam);
+    if (!num) { toast('Add the litter number'); $('lNum').focus(); return; }
+    if (!sire) { toast('Add the sire'); $('lSire').focus(); return; }
+    if (!dam) { toast('Add the dam'); $('lDam').focus(); return; }
+    var l = editingLitter;
+    if (!l) { l = { id: newId(), kind: 'litter', created: Date.now() }; data.litters.push(l); }
+    l.num = num;
+    l.sire = editingLitter ? sire : matchKnown(sire, 'boar');
+    l.dam = editingLitter ? dam : matchKnown(dam, 'sow');
+    l.line = tidy($('lLine').value);
+    l.date = $('lDate').value || '';
+    l.notes = tidy($('lNotes').value).slice(0, 300);
+    l.updated = Date.now();
+    var ok = save();
+    closeLitter();
+    render();
+    if (ok) flashSaved();
+    toast(ok ? 'Saved: litter ' + l.num + ', ' + pedigree(l) : 'Could not save to this phone. Check storage settings.');
+  });
+  $('lDelete').addEventListener('click', function () {
+    if (!editingLitter) return;
+    if (!litterArmed) {
+      litterArmed = true;
+      $('lDelete').classList.add('armed');
+      $('lDelete').textContent = 'Tap again to delete';
+      litterArmTimer = setTimeout(disarmLitterDelete, 4000);
+      return;
+    }
+    var id = editingLitter.id;
+    data.litters = data.litters.filter(function (l) { return l.id !== id; });
+    data.gone.push({ id: id, updated: Date.now() });
+    save(); closeLitter(); render(); toast('Deleted');
+  });
+  $('choiceLitter').addEventListener('click', function () {
+    closeChoice();
+    if (chosen) { setTab('litters'); openLitter({ sire: chosen.boar, dam: chosen.sow }); }
+  });
+
   /* ---------- Tapped an entry in a main list: edit it, or open the sow ---------- */
   var chosen = null;
   function openChoice(r) {
@@ -908,6 +1112,7 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
     w.appendChild(el('b', '', heat ? STAGES[r.type] : 'Bred to ' + r.boar));
     w.appendChild(document.createTextNode(niceDate(r.date) + (heat && niceTime(r) ? ', ' + niceTime(r) : '')));
     $('choiceEdit').textContent = heat ? 'Edit heat record' : 'Edit breeding';
+    $('choiceLitter').hidden = heat;
     $('choice').hidden = false;
   }
   function closeChoice() { $('choice').hidden = true; }
@@ -923,7 +1128,7 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
 
   // Which screen is showing: home, breeding, heat or due (Coming in)
   var tab = 'home';
-  var TITLES = { breeding: 'Breedings', heat: 'Heat', due: 'Coming in' };
+  var TITLES = { breeding: 'Breedings', heat: 'Heat', due: 'Coming in', litters: 'Litters' };
   function setTab(t) {
     if (currentSow != null) closeSow();
     tab = t;
@@ -945,6 +1150,8 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
     renderSow();
     var q = key(searchEl.value);
     function match(r) { return !q || key(r.sow).indexOf(q) !== -1; }
+    function matchLitter(l) { return !q || key(l.num + ' ' + pedigree(l)).indexOf(q) !== -1; }
+    var isLitters = tab === 'litters';
     var due = comingIn();
 
     // Yellow bar at the top when a sow needs watching now (overdue, today or tomorrow)
@@ -973,6 +1180,8 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
     $('screenTitle').textContent = TITLES[tab] || '';
     $('manualBtn').hidden = tab !== 'breeding';
     $('manualHeatBtn').hidden = tab !== 'heat';
+    $('manualLitterBtn').hidden = !isLitters;
+    searchEl.placeholder = isLitters ? 'Find a litter, sire or dam' : 'Find a sow';
     listEl.hidden = isDue || isHome;
     $('dueView').hidden = !isDue;
     listEl.textContent = '';
@@ -984,6 +1193,10 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
       df.forEach(function (o) { $('dueFarrow').appendChild(makeDueRow(o, 'farrow')); });
       $('dueHeatNone').hidden = dh.length > 0;
       $('dueFarrowNone').hidden = df.length > 0;
+    } else if (isLitters) {
+      all = sortedLitters();
+      rows = all.filter(matchLitter);
+      rows.forEach(function (l) { listEl.appendChild(makeLitterRow(l)); });
     } else {
       all = isHome ? [] : sorted(tab === 'heat' ? data.heats : data.breedings);
       rows = all.filter(match);
@@ -993,10 +1206,11 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
     }
     $('empty').hidden = !(tab === 'breeding' && all.length === 0);
     $('emptyHeat').hidden = !(tab === 'heat' && all.length === 0);
+    $('emptyLitters').hidden = !(isLitters && all.length === 0);
     $('nomatch').hidden = !(!isDue && all.length > 0 && rows.length === 0);
     var nb = data.breedings.length, nh = data.heats.length;
     var nDue = due.heat.length + due.farrow.length;
-    $('count').textContent = tab === 'breeding' ? plural(nb, 'breeding') : tab === 'heat' ? plural(nh, 'heat record') : tab === 'due' ? nDue + ' due' : '';
+    $('count').textContent = tab === 'breeding' ? plural(nb, 'breeding') : tab === 'heat' ? plural(nh, 'heat record') : tab === 'due' ? nDue + ' due' : isLitters ? plural(data.litters.length, 'litter') : '';
     $('navBadge').hidden = !nDue;
     $('navBadge').textContent = nDue;
   }
@@ -1224,7 +1438,7 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
   });
 
   /* ---------- Backup: spreadsheet export and restore ---------- */
-  var CSV_HEAD = ['Type', 'Sow', 'Date', 'Time', 'Boar', 'Heat stage', 'Next heat expected', 'Expected farrowing'];
+  var CSV_HEAD = ['Type', 'Sow', 'Date', 'Time', 'Boar', 'Heat stage', 'Next heat expected', 'Expected farrowing', 'Litter number', 'Dam breeding', 'Notes'];
   function csvCell(v) {
     v = String(v == null ? '' : v);
     return /[",\r\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
@@ -1236,9 +1450,13 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
         heat ? 'Heat' : 'Breeding', r.sow, r.date, heat ? niceTime(r) : '',
         heat ? '' : r.boar, heat ? STAGES[r.type] : '',
         heat && r.type !== 'standing' ? '' : plusDays(r.date, HEAT_DAYS),
-        heat ? '' : plusDays(r.date, FARROW_DAYS)
+        heat ? '' : plusDays(r.date, FARROW_DAYS), '', '', ''
       ];
     });
+    // Litters: the dam goes in the Sow column, the sire in the Boar column, the farrowing date in Date
+    rows = rows.concat(sortedLitters().map(function (l) {
+      return ['Litter', l.dam, l.date || '', '', l.sire, '', '', '', l.num, l.line || '', l.notes || ''];
+    }));
     return '\uFEFF' + [CSV_HEAD].concat(rows).map(function (r) { return r.map(csvCell).join(','); }).join('\r\n') + '\r\n';
   }
   function parseCSV(text) {
@@ -1293,6 +1511,14 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
     var added = 0, skipped = 0, bad = 0, stamp = Date.now();
     rows.slice(1).forEach(function (r) {
       var sow = tidy(get(r, 'Sow')), date = readDate(get(r, 'Date')), type = key(get(r, 'Type')), rec;
+      if (type === 'litter') {
+        var lit = { kind: 'litter', num: tidy(get(r, 'Litter number')), sire: tidy(get(r, 'Boar')), dam: sow, line: tidy(get(r, 'Dam breeding')), date: date, notes: tidy(get(r, 'Notes')) };
+        if (!lit.num || !lit.dam || !lit.sire) { bad++; return; }
+        if (data.litters.some(function (o) { return key(o.num) === key(lit.num) && key(o.dam) === key(lit.dam) && key(o.sire) === key(lit.sire); })) { skipped++; return; }
+        lit.id = newId(); lit.created = stamp++; lit.updated = lit.created;
+        data.litters.push(lit); added++;
+        return;
+      }
       if (!sow || !date) { bad++; return; }
       if (type === 'heat') {
         var st = key(get(r, 'Heat stage')), code = '';
@@ -1368,13 +1594,13 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
   function showLastBackup() {
     var t = null;
     try { t = localStorage.getItem(KEY + '.backup'); } catch (e) {}
-    var n = everything().length;
+    var n = allRecords().length;
     $('lastBackup').textContent = !n ? 'Nothing to back up yet.'
       : t ? 'Last exported ' + agoText(t).toLowerCase() + '. Send the file to yourself by email or save it to Files.'
       : 'Not backed up yet. Your records are only on this phone until you export them.';
   }
   $('exportBtn').addEventListener('click', function () {
-    if (!everything().length) { toast('Nothing to export yet'); return; }
+    if (!allRecords().length) { toast('Nothing to export yet'); return; }
     var today = toISO(new Date());
     giveFile('sow-tracker-' + today + '.csv', 'text/csv', buildCSV(), function (ok) {
       if (!ok) return;
@@ -1531,12 +1757,12 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
   }
   var shareTimer;
   function shareSoon() { clearTimeout(shareTimer); shareTimer = setTimeout(syncShare, 1500); }
-  function busyEditing() { return !$('sheet').hidden || !$('choice').hidden; }
+  function busyEditing() { return !$('sheet').hidden || !$('choice').hidden || !$('litterSheet').hidden || !$('litterView').hidden; }
 
   // Take what the service sent and fold it into this phone's copy. Newest change wins.
   function applyShared(records) {
     var mine = {}, changed = false;
-    everything().forEach(function (r) { mine[r.id] = r; });
+    allRecords().forEach(function (r) { mine[r.id] = r; });
     (data.gone || []).forEach(function (g) { mine[g.id] = { id: g.id, deleted: true, updated: g.updated }; });
     records.forEach(function (r) {
       if (!r || !r.id) return;
@@ -1544,10 +1770,11 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
       if (!have || stampOf(r) > stampOf(have)) { mine[r.id] = r; changed = true; }
     });
     if (!changed) return false;
-    data.breedings = []; data.heats = []; data.gone = [];
+    data.breedings = []; data.heats = []; data.litters = []; data.gone = [];
     Object.keys(mine).forEach(function (id) {
       var r = mine[id];
       if (r.deleted) data.gone.push({ id: r.id, updated: r.updated });
+      else if (r.kind === 'litter') data.litters.push(r);
       else if (isHeat(r)) data.heats.push(r);
       else data.breedings.push(r);
     });
@@ -1560,7 +1787,7 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
     var seqAtStart = shareSeq;
     var body = { code: share.code, ver: share.ver || 0 };
     if (share.dirty || !share.ver) {
-      body.records = everything().map(function (r) { if (!r.updated) r.updated = r.created || 1; return r; })
+      body.records = allRecords().map(function (r) { if (!r.updated) r.updated = r.created || 1; return r; })
         .concat((data.gone || []).map(function (g) { return { id: g.id, deleted: true, updated: g.updated }; }));
     }
     return post('/share/sync', body).then(function (res) {
