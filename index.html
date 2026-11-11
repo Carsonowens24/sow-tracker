@@ -405,7 +405,7 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
     <p class="hint">Makes a calendar file with each sow's expected return to heat and farrowing date, with an alert at 6 AM that day.</p>
     <p class="hint" id="fileLink" hidden></p>
   </section>
-  <p class="version" id="version">Version 13</p>
+  <p class="version" id="version">Version 13.1</p>
 </div>
 
 <div class="wrap" id="sowView" hidden>
@@ -1094,7 +1094,7 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
     data.litters.forEach(function (l) { var n = parseInt(l.num, 10); if (n > max) max = n; });
     return String(max + 1);
   }
-  function makeLitterRow(l) {
+  function makeLitterRow(l, archived) {
     var li = el('li');
     var b = el('button', 'row');
     b.type = 'button';
@@ -1107,14 +1107,16 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
     var when = el('span', 'when');
     if (l.date) { when.appendChild(el('b', '', shortDate(l.date))); when.appendChild(document.createTextNode('Farrowed')); }
     b.appendChild(when);
-    b.addEventListener('click', function () { openLitterView(l); });
+    b.addEventListener('click', function () { openLitterView(l, archived); });
     li.appendChild(b);
     return li;
   }
   // One litter, with everything about it spelled out
   var viewing = null;
-  function openLitterView(l) {
+  function openLitterView(l, archived) {
     viewing = l;
+    $('lvEdit').hidden = !!archived;   // archived litters are view-only
+    $('lvBack').textContent = archived ? '\u2039 Back to archive' : '\u2039 All litters';
     $('lvNum').textContent = l.num;
     $('lvPed').textContent = pedigree(l);
     var box = $('lvLines');
@@ -1140,7 +1142,7 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
       line(t.label + ' (' + t.age + ')', text);
     });
     line('Notes', l.notes);
-    $('lvDam').hidden = !damSow(l);
+    $('lvDam').hidden = !!archived || !damSow(l);
     $('litterView').hidden = false;
     $('litterView').scrollTop = 0;
   }
@@ -1445,14 +1447,15 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
     $('archListWrap').hidden = true;
     $('archDetail').hidden = false;
     $('archName').value = a.name;
-    $('archInfo').textContent = items.length + ' ' + (items.length === 1 ? w[0] : w[1]) + ', archived ' + niceDate(toISO(new Date(a.created))) + '.';
+    $('archInfo').textContent = items.length + ' ' + (items.length === 1 ? w[0] : w[1]) + ', archived ' + niceDate(toISO(new Date(a.created))) + '.'
+      + (a.tab === 'litters' ? ' Tap a litter to see its vaccine and weaning records.' : '');
     $('archRestore').textContent = 'Bring back to ' + w[2];
     disarmArchDelete();
     var rows = $('archRows');
     rows.textContent = '';
     if (a.tab === 'litters') {
       items.slice().sort(function (x, y) { return String(x.num).localeCompare(String(y.num), undefined, { numeric: true }); })
-        .forEach(function (l) { rows.appendChild(frozenRow(makeLitterRow(l))); });
+        .forEach(function (l) { rows.appendChild(makeLitterRow(l, true)); });
     } else {
       sorted(items).forEach(function (r) { rows.appendChild(frozenRow(makeRow(r, true, function () {}))); });
     }
