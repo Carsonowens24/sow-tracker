@@ -331,7 +331,7 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
   <div class="empty" id="emptyLitters" hidden>
     <p>No litters yet. Tap Add litter and fill in its number and pedigree, for example:</p>
     <ul>
-      <li>1 &nbsp; Hang Time &times; 10-7 QF</li>
+      <li>1 &nbsp; Hang Time &times; 10-7 QF &nbsp; (5 males, 4 females)</li>
     </ul>
     <p>You can also tap a breeding on the Breeding screen and choose &ldquo;Add a litter from this breeding&rdquo;.</p>
   </div>
@@ -388,7 +388,7 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
     <p class="hint">Makes a calendar file with each sow's expected return to heat and farrowing date, with an alert at 6 AM that day.</p>
     <p class="hint" id="fileLink" hidden></p>
   </section>
-  <p class="version" id="version">Version 10</p>
+  <p class="version" id="version">Version 11</p>
 </div>
 
 <div class="wrap" id="sowView" hidden>
@@ -490,12 +490,18 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
       <div class="chips" id="lSireChips"></div>
     </div>
     <div class="field">
-      <label for="lDam">Dam (sow number, name or ear notch)</label>
-      <input type="text" id="lDam" autocomplete="off" autocapitalize="words" placeholder="10-7">
+      <label for="lDam">Dam</label>
+      <input type="text" id="lDam" autocomplete="off" autocapitalize="words" placeholder="10-7 QF">
     </div>
-    <div class="field">
-      <label for="lLine">Dam's breeding (optional)</label>
-      <input type="text" id="lLine" autocomplete="off" autocapitalize="characters" placeholder="QF">
+    <div class="pair">
+      <div class="field">
+        <label for="lMales">Males</label>
+        <input type="text" id="lMales" autocomplete="off" inputmode="numeric" pattern="[0-9]*">
+      </div>
+      <div class="field">
+        <label for="lFemales">Females</label>
+        <input type="text" id="lFemales" autocomplete="off" inputmode="numeric" pattern="[0-9]*">
+      </div>
     </div>
     <div class="field">
       <label for="lDate">Farrowed (optional)</label>
@@ -737,7 +743,8 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
     } catch (e) { storageOK = false; }
     if (!Array.isArray(data.heats)) data.heats = [];
     if (!Array.isArray(data.litters)) data.litters = [];
-    if (!Array.isArray(data.gone)) data.gone = [];   // deleted entries, remembered so sharing does not bring them back
+    if (!Array.isArray(data.gone)) data.gone = [];
+    if (typeof tidyLitters === 'function') tidyLitters();   // deleted entries, remembered so sharing does not bring them back
   }
   // fromShare: the change came from another phone, so do not send it straight back
   function save(fromShare) {
@@ -969,6 +976,28 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
 
   /* ---------- Litters: a numbered list with each litter's pedigree ---------- */
   function pedigree(l) { return l.sire + ' × ' + l.dam + (l.line ? ' ' + l.line : ''); }
+  // Earlier versions kept the dam's breeding in its own box. It now lives in the Dam box.
+  function tidyLitters() {
+    data.litters.forEach(function (l) {
+      if (l.line) { l.dam = tidy(l.dam + ' ' + l.line); l.line = ''; l.updated = Date.now(); }
+    });
+  }
+  function count(v) { var n = parseInt(v, 10); return isNaN(n) || n < 0 ? '' : n; }
+  function pigCounts(l) {
+    var parts = [];
+    if (l.males !== '' && l.males != null) parts.push(plural(l.males, 'male'));
+    if (l.females !== '' && l.females != null) parts.push(plural(l.females, 'female'));
+    return parts.join(', ');
+  }
+  // The sow this litter's dam refers to, if she has records ("10-7 QF" matches sow "10-7")
+  function damSow(l) {
+    var d = key(l.dam), best = '';
+    everything().forEach(function (r) {
+      var k = key(r.sow);
+      if ((d === k || d.indexOf(k + ' ') === 0) && k.length > key(best).length) best = r.sow;
+    });
+    return best;
+  }
   function sortedLitters() {
     return data.litters.slice().sort(function (a, b) {
       return String(a.num).localeCompare(String(b.num), undefined, { numeric: true }) || a.created - b.created;
@@ -986,7 +1015,8 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
     b.appendChild(el('span', 'lnum', l.num));
     var who = el('span', 'who');
     who.appendChild(el('b', '', pedigree(l)));
-    if (l.notes) who.appendChild(el('small', '', l.notes));
+    var sub = [pigCounts(l), l.notes].filter(function (x) { return x; }).join(' · ');
+    if (sub) who.appendChild(el('small', '', sub));
     b.appendChild(who);
     var when = el('span', 'when');
     if (l.date) { when.appendChild(el('b', '', shortDate(l.date))); when.appendChild(document.createTextNode('Farrowed')); }
@@ -1011,19 +1041,20 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
     }
     line('Litter number', l.num);
     line('Sire (boar)', l.sire);
-    line('Dam (sow)', l.dam);
-    line("Dam's breeding", l.line);
+    line('Dam', l.dam);
+    line('Males', l.males === '' || l.males == null ? '' : String(l.males));
+    line('Females', l.females === '' || l.females == null ? '' : String(l.females));
+    if (l.males !== '' && l.males != null && l.females !== '' && l.females != null) line('Total pigs', String(l.males + l.females));
     line('Farrowed', l.date ? niceDate(l.date) : '');
     line('Notes', l.notes);
-    var k = key(l.dam);
-    $('lvDam').hidden = !everything().some(function (r) { return key(r.sow) === k; });
+    $('lvDam').hidden = !damSow(l);
     $('litterView').hidden = false;
     $('litterView').scrollTop = 0;
   }
   function closeLitterView() { $('litterView').hidden = true; viewing = null; }
   $('lvBack').addEventListener('click', closeLitterView);
   $('lvEdit').addEventListener('click', function () { var l = viewing; closeLitterView(); if (l) openLitter(l); });
-  $('lvDam').addEventListener('click', function () { var l = viewing; closeLitterView(); if (l) openSow(l.dam); });
+  $('lvDam').addEventListener('click', function () { var l = viewing; closeLitterView(); if (l && damSow(l)) openSow(damSow(l)); });
   var editingLitter = null, litterArmed = false, litterArmTimer;
   function disarmLitterDelete() {
     litterArmed = false; clearTimeout(litterArmTimer);
@@ -1036,7 +1067,8 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
     $('lNum').value = l && l.num != null ? l.num : nextLitterNumber();
     $('lSire').value = l && l.sire ? l.sire : '';
     $('lDam').value = l && l.dam ? l.dam : '';
-    $('lLine').value = l && l.line ? l.line : '';
+    $('lMales').value = l && l.males != null ? l.males : '';
+    $('lFemales').value = l && l.females != null ? l.females : '';
     $('lDate').value = l && l.date ? l.date : '';
     $('lNotes').value = l && l.notes ? l.notes : '';
     ['lNum', 'lSire', 'lDam'].forEach(function (id) { $(id).classList.remove('missing'); });
@@ -1071,8 +1103,10 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
     if (!l) { l = { id: newId(), kind: 'litter', created: Date.now() }; data.litters.push(l); }
     l.num = num;
     l.sire = editingLitter ? sire : matchKnown(sire, 'boar');
-    l.dam = editingLitter ? dam : matchKnown(dam, 'sow');
-    l.line = tidy($('lLine').value);
+    l.dam = dam;
+    l.line = '';
+    l.males = count($('lMales').value);
+    l.females = count($('lFemales').value);
     l.date = $('lDate').value || '';
     l.notes = tidy($('lNotes').value).slice(0, 300);
     l.updated = Date.now();
@@ -1438,7 +1472,7 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
   });
 
   /* ---------- Backup: spreadsheet export and restore ---------- */
-  var CSV_HEAD = ['Type', 'Sow', 'Date', 'Time', 'Boar', 'Heat stage', 'Next heat expected', 'Expected farrowing', 'Litter number', 'Dam breeding', 'Notes'];
+  var CSV_HEAD = ['Type', 'Sow', 'Date', 'Time', 'Boar', 'Heat stage', 'Next heat expected', 'Expected farrowing', 'Litter number', 'Males', 'Females', 'Notes'];
   function csvCell(v) {
     v = String(v == null ? '' : v);
     return /[",\r\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
@@ -1450,12 +1484,12 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
         heat ? 'Heat' : 'Breeding', r.sow, r.date, heat ? niceTime(r) : '',
         heat ? '' : r.boar, heat ? STAGES[r.type] : '',
         heat && r.type !== 'standing' ? '' : plusDays(r.date, HEAT_DAYS),
-        heat ? '' : plusDays(r.date, FARROW_DAYS), '', '', ''
+        heat ? '' : plusDays(r.date, FARROW_DAYS), '', '', '', ''
       ];
     });
     // Litters: the dam goes in the Sow column, the sire in the Boar column, the farrowing date in Date
     rows = rows.concat(sortedLitters().map(function (l) {
-      return ['Litter', l.dam, l.date || '', '', l.sire, '', '', '', l.num, l.line || '', l.notes || ''];
+      return ['Litter', l.dam, l.date || '', '', l.sire, '', '', '', l.num, l.males == null ? '' : l.males, l.females == null ? '' : l.females, l.notes || ''];
     }));
     return '\uFEFF' + [CSV_HEAD].concat(rows).map(function (r) { return r.map(csvCell).join(','); }).join('\r\n') + '\r\n';
   }
@@ -1512,7 +1546,8 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
     rows.slice(1).forEach(function (r) {
       var sow = tidy(get(r, 'Sow')), date = readDate(get(r, 'Date')), type = key(get(r, 'Type')), rec;
       if (type === 'litter') {
-        var lit = { kind: 'litter', num: tidy(get(r, 'Litter number')), sire: tidy(get(r, 'Boar')), dam: sow, line: tidy(get(r, 'Dam breeding')), date: date, notes: tidy(get(r, 'Notes')) };
+        var oldLine = head.indexOf('dam breeding') >= 0 ? tidy(String(r[head.indexOf('dam breeding')] || '')) : '';   // files from version 10
+        var lit = { kind: 'litter', num: tidy(get(r, 'Litter number')), sire: tidy(get(r, 'Boar')), dam: tidy(sow + ' ' + oldLine), line: '', males: count(get(r, 'Males')), females: count(get(r, 'Females')), date: date, notes: tidy(get(r, 'Notes')) };
         if (!lit.num || !lit.dam || !lit.sire) { bad++; return; }
         if (data.litters.some(function (o) { return key(o.num) === key(lit.num) && key(o.dam) === key(lit.dam) && key(o.sire) === key(lit.sire); })) { skipped++; return; }
         lit.id = newId(); lit.created = stamp++; lit.updated = lit.created;
@@ -1774,7 +1809,7 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
     Object.keys(mine).forEach(function (id) {
       var r = mine[id];
       if (r.deleted) data.gone.push({ id: r.id, updated: r.updated });
-      else if (r.kind === 'litter') data.litters.push(r);
+      else if (r.kind === 'litter') { if (r.line) { r.dam = tidy(r.dam + ' ' + r.line); r.line = ''; } data.litters.push(r); }
       else if (isHeat(r)) data.heats.push(r);
       else data.breedings.push(r);
     });

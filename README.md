@@ -10,7 +10,7 @@ The app has five screens. Switch between them with the bar at the bottom.
 - **Breeding:** every breeding, newest first, with an **Add breeding** button.
 - **Heat:** every heat record, with an **Add heat** button.
 - **Coming in:** sows due back in heat or due to farrow.
-- **Litters:** a numbered list of litters with each one's pedigree, for example "1  Hang Time × 10-7 QF". Tap a litter to see everything about it (number, sire, dam, the dam's breeding, farrowing date and notes), and tap **Edit litter** to change it. Add one with **Add litter**, or tap a breeding on the Breeding screen and choose **Add a litter from this breeding**. Litters are included in the spreadsheet export, restore, and sharing.
+- **Litters:** a numbered list of litters with each one's pedigree, for example "1  Hang Time × 10-7 QF". Tap a litter to see everything about it (number, sire, dam, number of males and females, farrowing date and notes), and tap **Edit litter** to change it. Add one with **Add litter**, or tap a breeding on the Breeding screen and choose **Add a litter from this breeding**. Litters are included in the spreadsheet export, restore, and sharing.
 
 How to read the colors:
 
