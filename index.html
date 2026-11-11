@@ -133,7 +133,7 @@ input[type="text"], input[type="search"], input[type="date"], input[type="time"]
   width: 100%;
   min-height: 72px;
   display: grid;
-  grid-template-columns: auto 1fr auto;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: 12px;
   padding: 10px 14px;
@@ -156,7 +156,9 @@ input[type="text"], input[type="search"], input[type="date"], input[type="time"]
   font-variant-numeric: tabular-nums;
   overflow-wrap: anywhere;
 }
-.who { min-width: 0; overflow-wrap: anywhere; }
+.tag.mid { font-size: 17px; max-width: 104px; padding: 8px; }
+.tag.long { font-size: 14px; max-width: 96px; padding: 8px 6px; line-height: 1.2; overflow-wrap: break-word; }
+.who { min-width: 0; overflow-wrap: break-word; }
 .who b { display: block; font-size: 19px; }
 .who small { color: var(--muted); font-size: 15px; }
 .when { text-align: right; font-size: 16px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
@@ -405,7 +407,7 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
     <p class="hint">Makes a calendar file with each sow's expected return to heat and farrowing date, with an alert at 6 AM that day.</p>
     <p class="hint" id="fileLink" hidden></p>
   </section>
-  <p class="version" id="version">Version 13.1</p>
+  <p class="version" id="version">Version 13.2</p>
 </div>
 
 <div class="wrap" id="sowView" hidden>
@@ -946,7 +948,7 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
     var left = daysUntil(o[field]);
     var b = el('button', 'row' + (left < 0 ? ' late' : left <= 1 ? ' soon' : ''));
     b.type = 'button';
-    b.appendChild(el('span', 'tag', o.sow));
+    b.appendChild(tagEl(o.sow));
     var who = el('span', 'who');
     who.appendChild(el('b', '', o.bred ? 'Bred to ' + o.bred.boar : 'Not bred'));
     who.appendChild(el('small', '', o.bred ? 'Bred ' + shortDate(o.bred.date) : 'Last heat ' + shortDate(o.lastHeat)));
@@ -972,12 +974,17 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
     return e;
   }
 
+  // A sow's tag for a list row. Long names get smaller lettering so the rest of the row keeps its room.
+  function tagEl(name) {
+    var n = String(name).length;
+    return el('span', 'tag' + (n > 8 ? ' long' : n > 4 ? ' mid' : ''), name);
+  }
   // One line in a list. Main lists show the sow's tag; her own page leads with what happened.
   function makeRow(r, withTag, onTap) {
     var li = el('li');
     var b = el('button', withTag ? 'row' : 'row plain');
     b.type = 'button';
-    if (withTag) b.appendChild(el('span', 'tag', r.sow));
+    if (withTag) b.appendChild(tagEl(r.sow));
     var who = el('span', 'who');
     var label = el('b');
     label.appendChild(el('span', 'dot dot-' + (isHeat(r) ? r.type : 'bred')));
