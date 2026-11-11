@@ -402,12 +402,13 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
       <button type="button" class="btn wide go" id="pushBtn">Turn on notifications</button>
       <button type="button" class="btn wide" id="pushTestBtn" hidden>Send a test notification</button>
       <p class="hint" id="pushNote"></p>
+      <p class="hint" id="pushInfo" hidden></p>
     </div>
     <button type="button" class="btn wide" id="calBtn">Add reminders to Calendar</button>
     <p class="hint">Makes a calendar file with each sow's expected return to heat and farrowing date, with an alert at 6 AM that day.</p>
     <p class="hint" id="fileLink" hidden></p>
   </section>
-  <p class="version" id="version">Version 13.2</p>
+  <p class="version" id="version">Version 13.3</p>
 </div>
 
 <div class="wrap" id="sowView" hidden>
@@ -2149,10 +2150,30 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
       $('pushBtn').textContent = on ? 'Turn off notifications' : 'Turn on notifications';
       $('pushBtn').classList.toggle('go', !on);
       $('pushTestBtn').hidden = !on;
+      $('pushInfo').hidden = !on;
+      if (on) showPushInfo(sub);
       $('pushNote').textContent = on
-        ? 'On. You get a notification at 6 AM on the day a sow is due back in heat or due to farrow.'
+        ? 'On. You get one notification at 6 AM on any day something is due: a sow back in heat or due to farrow, or a litter job.'
         : 'Get a notification at 6 AM on the day a sow is due, even when the app is closed.';
     }).catch(function () {});
+  }
+  // Plain-language readout of what the notification service has on file for this phone
+  function showPushInfo(sub) {
+    var box = $('pushInfo');
+    syncPush().then(function () { return post('/status', { endpoint: sub.endpoint }); }).then(function (r) {
+      if (!r || !r.ok) { box.textContent = ''; return; }
+      if (!r.found) { box.textContent = 'This phone is not registered with the notification service. Turn notifications off, then on again.'; return; }
+      var parts = [];
+      if (r.sentToday) parts.push('Today\u2019s reminder was sent.');
+      else if (r.dueToday) parts.push(r.hourNow < r.hour ? 'Something is due today. The reminder will arrive at ' + r.hour + ' AM.' : 'Something is due today. The reminder will arrive at the next hourly check, on the hour.');
+      if (r.count && !(r.dueToday && r.count === 1)) {
+        var nextDay = r.dueToday ? '' : 'Next reminder: ' + niceDate(r.next) + ' at ' + r.hour + ' AM. ';
+        parts.push(nextDay + plural(r.count, 'reminder date') + ' on file.');
+      }
+      if (!r.count) parts.push('No reminder dates on file yet. They are added when a sow or litter has something coming due.');
+      parts.push(r.lastCheck ? 'The service last checked ' + agoShort(r.lastCheck) + '.' : 'The service has not run its hourly check yet.');
+      box.textContent = parts.join(' ');
+    }).catch(function () { box.textContent = 'Could not reach the notification service to check its status.'; });
   }
   $('pushBtn').addEventListener('click', function () {
     if (!pushReady()) return;

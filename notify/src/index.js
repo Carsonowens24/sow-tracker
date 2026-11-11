@@ -71,7 +71,7 @@ export class Store extends DurableObject {
       const all = await this.ctx.storage.list({ prefix: 'sub:' });
       if (all.size >= MAX_PHONES) return false;
     }
-    await this.ctx.storage.put(id, { endpoint, dates, tz, hour, lastSent: existing ? existing.lastSent : '' });
+    await this.ctx.storage.put(id, { endpoint, dates, tz, hour, lastSent: existing ? existing.lastSent : '', lastStatus: existing ? existing.lastStatus || 0 : 0 });
     return true;
   }
   async removeSub(endpoint) {
@@ -106,8 +106,23 @@ export class Store extends DurableObject {
     try { return await this.push(sub.endpoint); } catch (e) { console.log('push failed:', e && e.message); return 0; }
   }
 
+  // What the service has on file for one phone, so the app can show whether reminders are set up right.
+  async info(endpoint) {
+    const sub = await this.ctx.storage.get('sub:' + await hash(endpoint));
+    const lastCheck = (await this.ctx.storage.get('lastCheck')) || 0;
+    if (!sub) return { found: false, lastCheck };
+    const now = localNow(sub.tz);
+    const upcoming = sub.dates.filter((d) => d >= now.date);
+    return {
+      found: true, lastCheck, tz: sub.tz, hour: sub.hour, today: now.date, hourNow: now.hour,
+      count: upcoming.length, next: upcoming[0] || '', dueToday: upcoming[0] === now.date,
+      sentToday: sub.lastSent === now.date, lastStatus: sub.lastStatus || 0
+    };
+  }
+
   // Runs every hour.
   async sendDue() {
+    await this.ctx.storage.put('lastCheck', Date.now());
     const all = await this.ctx.storage.list({ prefix: 'sub:' });
     let sent = 0;
     for (const [id, sub] of all) {
@@ -116,12 +131,13 @@ export class Store extends DurableObject {
       let status = 0;
       try { status = await this.push(sub.endpoint); } catch (e) { console.log('push failed:', e && e.message); status = 0; }
       if (status === 404 || status === 410) { await this.ctx.storage.delete(id); continue; }   // phone unsubscribed
+      sub.lastStatus = status;
       if (status >= 200 && status < 300) {
         sub.lastSent = now.date;
         sub.dates = sub.dates.filter((d) => d >= now.date);
         await this.ctx.storage.put(id, sub);
         sent++;
-      }
+      } else await this.ctx.storage.put(id, sub);
     }
     return sent;
   }
@@ -230,6 +246,7 @@ export default {
         const status = await store.test(endpoint);
         return reply(request, { ok: status >= 200 && status < 300, status });
       }
+      if (url.pathname === '/status') return reply(request, { ok: true, ...(await store.info(endpoint)) });
       if (url.pathname === '/off') {
         await store.removeSub(endpoint);
         return reply(request, { ok: true });
