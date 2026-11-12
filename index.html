@@ -245,6 +245,11 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
 .lnum.big { font-size: 30px; padding: 12px 16px; flex: none; }
 .dates b.plain { font-weight: 600; overflow-wrap: anywhere; }
 .row.done { opacity: 0.72; }
+.colhead { margin: 0 0 -8px; padding: 0 16px; color: var(--muted); font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
+.row.line { display: block; min-height: 64px; padding: 14px 16px; font-size: 19px; line-height: 1.35; overflow-wrap: break-word; }
+.row.line b { font-weight: 800; }
+.row.line .sep { color: var(--muted); padding: 0 2px; }
+.row.line small { display: block; color: var(--muted); font-size: 15px; }
 .version { text-align: center; color: var(--muted); font-size: 14px; margin: 0; }
 .empty {
   border: 2px dashed var(--line);
@@ -326,6 +331,7 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
     <button type="button" class="btn wide" id="optBtn">Options</button>
     <input type="search" id="search" placeholder="Find a sow" autocomplete="off" aria-label="Find a sow">
   </section>
+  <p class="colhead" id="breedHead" hidden>Dam &ndash; Boar &ndash; Date bred</p>
   <ul class="list" id="list"></ul>
   <div class="empty" id="empty" hidden>
     <p>No breedings logged yet. Tap Add breeding, or go to Home, tap the microphone and say:</p>
@@ -414,7 +420,7 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
     <p class="hint">Makes a calendar file with each sow's expected return to heat and farrowing date, with an alert at 8 AM that day, plus a heads-up 5 days before each.</p>
     <p class="hint" id="fileLink" hidden></p>
   </section>
-  <p class="version" id="version">Version 14.2</p>
+  <p class="version" id="version">Version 14.3</p>
 </div>
 
 <div class="wrap" id="sowView" hidden>
@@ -1029,6 +1035,24 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
   function tagEl(name) {
     var n = String(name).length;
     return el('span', 'tag' + (n > 8 ? ' long' : n > 4 ? ' mid' : ''), name);
+  }
+  // A breeding, written the way it is in the breeding book: Dam - Boar - Date bred
+  function makeBreedLine(r, onTap) {
+    var li = el('li');
+    var b = el('button', 'row line');
+    b.type = 'button';
+    var d = fromISO(r.date);
+    var date = shortDate(r.date) + (d.getFullYear() !== new Date().getFullYear() ? ', ' + d.getFullYear() : '');
+    b.appendChild(el('b', '', r.sow));
+    b.appendChild(el('span', 'sep', ' – '));
+    b.appendChild(document.createTextNode(r.boar || 'boar not set'));
+    b.appendChild(el('span', 'sep', ' – '));
+    b.appendChild(document.createTextNode(date));
+    var n = serviceNumber(r);
+    if (n > 1) b.appendChild(el('small', '', ordinal(n) + ' breeding this heat'));
+    b.addEventListener('click', onTap);
+    li.appendChild(b);
+    return li;
   }
   // One line in a list. Main lists show the sow's tag; her own page leads with what happened.
   function makeRow(r, withTag, onTap) {
@@ -1764,12 +1788,15 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
       all = isHome || isVacc || isFarrow ? [] : sorted(tab === 'heat' ? data.heats : data.breedings);
       rows = all.filter(match);
       rows.forEach(function (r) {
-        listEl.appendChild(makeRow(r, true, function () { openChoice(r); }));
+        listEl.appendChild(tab === 'breeding'
+          ? makeBreedLine(r, function () { openChoice(r); })
+          : makeRow(r, true, function () { openChoice(r); }));
       });
     }
     $('empty').hidden = !(tab === 'breeding' && all.length === 0);
     $('emptyHeat').hidden = !(tab === 'heat' && all.length === 0);
     $('emptyLitters').hidden = !(isLitters && all.length === 0);
+    $('breedHead').hidden = !(tab === 'breeding' && rows.length > 0);
     $('nomatch').hidden = !(!isDue && all.length > 0 && rows.length === 0);
     var nb = data.breedings.length, nh = data.heats.length;
     var nDue = due.heat.length;   // Coming in is heat only; sows due to farrow are on the Farrowing screen

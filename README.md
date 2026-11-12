@@ -7,7 +7,7 @@ A phone app for logging sow breedings on a hog operation. It is a web page you a
 The app has seven screens. Switch between them with the bar at the bottom.
 
 - **Home:** the farm logo, the microphone, and backup and reminder buttons.
-- **Breeding:** every breeding, newest first, with an **Add breeding** button.
+- **Breeding:** every breeding, newest first, each written as Dam – Boar – Date bred, with an **Add breeding** button.
 - **Heat:** every heat record, with an **Add heat** button.
 - **Coming in:** sows due back in heat.
 - **Farrowing:** every bred sow with her due date (114 days after breeding), soonest first. Overdue sows are outlined in red, and sows due today or tomorrow in orange. Tap a sow when she farrows and tap **Mark farrowed** to record the date; she moves to the **Farrowed** list and drops off Coming in. **Add a sow by due date** lets you enter a sow you only know the due date for: type the due date and the app fills in the date bred. By voice, say "Sow 118 is due November 16th bred to Hang Time".
