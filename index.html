@@ -177,6 +177,8 @@ input[type="text"], input[type="search"], input[type="date"], input[type="time"]
 .tab { min-height: 56px; border: 0; background: transparent; font-weight: 700; font-size: 16px; color: var(--muted); padding: 0 2px; }
 .tab + .tab { border-left: 2px solid var(--line); }
 .tab.on { background: var(--ink); color: var(--bg); }
+.tabs.two { grid-template-columns: 1fr 1fr; }
+.tabs.two .tab { font-size: 18px; min-height: 60px; }
 .stages { display: flex; flex-direction: column; gap: 8px; }
 .stage { min-height: var(--tap); border-radius: 14px; border: 2px solid var(--line); background: var(--surface); font-weight: 700; font-size: 19px; text-align: left; padding: 0 16px; }
 .stage.on, .chip.on { background: var(--ink); border-color: var(--ink); color: var(--bg); }
@@ -203,19 +205,19 @@ input[type="text"], input[type="search"], input[type="date"], input[type="time"]
 body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
 .nav {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 15;
-  display: grid; grid-template-columns: repeat(7, 1fr);
+  display: grid; grid-template-columns: repeat(6, 1fr);
   background: var(--surface); border-top: 2px solid var(--line);
   padding-bottom: env(safe-area-inset-bottom, 0px);
   padding-left: env(safe-area-inset-left, 0px); padding-right: env(safe-area-inset-right, 0px);
 }
 .nav button {
   min-height: 68px; border: 0; background: transparent; color: var(--muted);
-  font-weight: 700; font-size: 11px; padding: 6px 0; white-space: nowrap; letter-spacing: -0.02em;
+  font-weight: 700; font-size: 12px; padding: 6px 0; white-space: nowrap; letter-spacing: -0.01em;
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
 }
 .nav svg { width: 28px; height: 28px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .nav button.on { color: var(--ink); box-shadow: inset 0 5px 0 var(--go); }
-.nav .badge { position: absolute; top: 6px; margin-left: 26px; min-width: 22px; height: 22px; padding: 0 6px; border-radius: 11px; background: var(--tag); color: var(--tag-ink); font-size: 13px; line-height: 22px; font-weight: 800; }
+.nav .badge { position: absolute; top: 6px; margin-left: 28px; min-width: 22px; height: 22px; padding: 0 6px; border-radius: 11px; background: var(--tag); color: var(--tag-ink); font-size: 13px; line-height: 22px; font-weight: 800; }
 .nav button { position: relative; }
 .toast { bottom: calc(96px + env(safe-area-inset-bottom, 0px)) !important; }
 .splash { position: fixed; inset: 0; z-index: 50; background: #ffffff; display: flex; align-items: center; justify-content: center; pointer-events: none; animation: splashOut 0.35s ease 0.85s forwards; }
@@ -248,10 +250,9 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
 .due .colhead { margin: 0 0 -2px; }
 .colhead { margin: 0 0 -8px; padding: 0 16px; color: var(--muted); font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
 .row.line { display: block; min-height: 64px; padding: 14px 16px; font-size: 19px; line-height: 1.35; }
-.row.line .main { display: flex; align-items: baseline; gap: 6px; white-space: nowrap; min-width: 0; }
-.row.line .main > * { min-width: 0; overflow: hidden; text-overflow: ellipsis; flex: 0 1 auto; }
-.row.line .main > .sep, .row.line .main > .nw { flex: none; overflow: visible; }
-.row.line small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.row.line .main { display: flex; align-items: baseline; gap: 0.32em; white-space: nowrap; overflow: hidden; }
+.row.line .main > * { flex: none; }
+.row.line small { white-space: nowrap; overflow: hidden; }
 .row.line b { font-weight: 800; }
 .row.line .sep { color: var(--muted); }
 .row.line small { display: block; color: var(--muted); font-size: 15px; }
@@ -332,6 +333,10 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
   </section>
 
   <section class="listhead" id="listhead" aria-label="Records" hidden>
+    <div class="tabs two" id="breedSwitch" hidden>
+      <button type="button" class="tab on" id="swBreed" aria-pressed="true">Breedings</button>
+      <button type="button" class="tab" id="swFarrow" aria-pressed="false">Farrowing</button>
+    </div>
     <button type="button" class="btn go wide" id="manualBtn">Add breeding</button>
     <button type="button" class="btn go wide" id="manualHeatBtn">Add heat</button>
     <button type="button" class="btn go wide" id="manualLitterBtn">Add litter</button>
@@ -429,7 +434,7 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
     <p class="hint">Makes a calendar file with each sow's expected return to heat and farrowing date, with an alert at 8 AM that day, plus a heads-up 5 days before each.</p>
     <p class="hint" id="fileLink" hidden></p>
   </section>
-  <p class="version" id="version">Version 14.5</p>
+  <p class="version" id="version">Version 15</p>
 </div>
 
 <div class="wrap" id="sowView" hidden>
@@ -450,10 +455,9 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
 
 <nav class="nav" id="nav" aria-label="Screens">
   <button type="button" data-go="home" class="on"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l9-8 9 8M5 10v10h14V10"/></svg>Home</button>
-  <button type="button" data-go="breeding"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14v16H5zM9 9h6M9 13h6M9 17h3"/></svg>Breeding</button>
+  <button type="button" data-go="breeding"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14v16H5zM9 9h6M9 13h6M9 17h3"/></svg>Breeding<span class="badge" id="navBadgeF" hidden></span></button>
   <button type="button" data-go="heat"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3c1 4 5 6 5 11a5 5 0 0 1-10 0c0-2 1-3 2-4 0 2 1 3 2 3 0-4-1-6 1-10z"/></svg>Heat</button>
   <button type="button" data-go="due"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16v14H4zM4 10h16M8 3v4M16 3v4"/></svg>Coming in<span class="badge" id="navBadge" hidden></span></button>
-  <button type="button" data-go="farrow"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20s-7-4.6-7-10.2A4 4 0 0 1 12 7.4a4 4 0 0 1 7 2.400C19 15.400 12 20 12 20z"/></svg>Farrowing<span class="badge" id="navBadgeF" hidden></span></button>
   <button type="button" data-go="litters"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11M4 6h.5M4 12h.5M4 18h.5"/></svg>Litters</button>
   <button type="button" data-go="vacc"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17 3l4 4M19 5l-3 3M14 6l4 4-8.5 8.5H5.5v-4zM9 11l2 2M4 20l1.5-1.5"/></svg>Vaccines<span class="badge" id="navBadgeV" hidden></span></button>
 </nav>
@@ -1063,18 +1067,18 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
     li.appendChild(b);
     return li;
   }
-  // Keep each Breeding and Farrowing entry on a single line: make the lettering smaller until it fits.
-  // If a name is so long it still does not fit at the smallest size, it is cut short with "...".
+  // Keep each Breeding and Farrowing entry on a single line: make the lettering smaller until it all fits.
+  // Nothing is ever cut off with "...".
   function fitLines() {
-    Array.prototype.forEach.call(document.querySelectorAll('.row.line .main'), function (m) {
-      if (!m.clientWidth) return;   // not on screen right now
-      var size = 19;
-      m.style.fontSize = '';
-      function cut() {
-        for (var i = 0; i < m.children.length; i++) if (m.children[i].scrollWidth > m.children[i].clientWidth + 1) return true;
-        return false;
-      }
-      while (cut() && size > 12) { size -= 1; m.style.fontSize = size + 'px'; }
+    function shrink(node, start) {
+      if (!node || !node.clientWidth) return;   // not on screen right now
+      var size = start;
+      node.style.fontSize = '';
+      while (node.scrollWidth > node.clientWidth + 1 && size > 6) { size -= 0.5; node.style.fontSize = size + 'px'; }
+    }
+    Array.prototype.forEach.call(document.querySelectorAll('.row.line'), function (row) {
+      shrink(row.querySelector('.main'), 19);
+      shrink(row.querySelector('small'), 15);
     });
   }
   window.addEventListener('resize', fitLines);
@@ -1701,12 +1705,12 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
 
   // Which screen is showing: home, breeding, heat or due (Coming in)
   var tab = 'home';
-  var TITLES = { breeding: 'Breedings', heat: 'Heat', due: 'Coming in', litters: 'Litters', vacc: 'Vaccines', farrow: 'Farrowing' };
+  var TITLES = { breeding: 'Breeding', heat: 'Heat', due: 'Coming in', litters: 'Litters', vacc: 'Vaccines', farrow: 'Breeding' };   // Farrowing is a switch inside Breeding
   function setTab(t) {
     if (currentSow != null) closeSow();
     tab = t;
     Array.prototype.forEach.call(document.querySelectorAll('#nav button'), function (b) {
-      var on = b.getAttribute('data-go') === t;
+      var on = b.getAttribute('data-go') === (t === 'farrow' ? 'breeding' : t);
       b.classList.toggle('on', on);
       if (on) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
     });
@@ -1717,6 +1721,8 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
   Array.prototype.forEach.call(document.querySelectorAll('#nav button'), function (b) {
     b.addEventListener('click', function () { setTab(b.getAttribute('data-go')); });
   });
+  $('swBreed').addEventListener('click', function () { if (tab !== 'breeding') setTab('breeding'); });
+  $('swFarrow').addEventListener('click', function () { if (tab !== 'farrow') setTab('farrow'); });
   $('dueAlert').addEventListener('click', function () { setTab($('dueAlert').getAttribute('data-to') || 'due'); });
 
   function render() {
@@ -1761,6 +1767,11 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
     $('manualLitterBtn').hidden = !isLitters;
     $('optBtn').hidden = !(tab === 'breeding' || tab === 'heat' || isLitters);
     $('farrowAddBtn').hidden = !isFarrow;
+    $('breedSwitch').hidden = !(tab === 'breeding' || isFarrow);
+    $('swBreed').classList.toggle('on', tab === 'breeding');
+    $('swFarrow').classList.toggle('on', isFarrow);
+    $('swBreed').setAttribute('aria-pressed', tab === 'breeding');
+    $('swFarrow').setAttribute('aria-pressed', isFarrow);
     $('farrowView').hidden = !isFarrow;
     var farAll = outlook().filter(function (o) { return o.bred; });
     var farWaiting = farAll.filter(function (o) { return !o.farrowedOn; });
@@ -1827,6 +1838,7 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
     $('navBadge').textContent = nDue;
     $('navBadgeF').hidden = !due.farrow.length;
     $('navBadgeF').textContent = due.farrow.length;
+    $('swFarrow').textContent = 'Farrowing' + (due.farrow.length ? ' (' + due.farrow.length + ')' : '');
     var nJobs = jobsOpen.filter(function (x) { return daysUntil(x.due) <= 3; }).length;
     $('navBadgeV').hidden = !nJobs;
     $('navBadgeV').textContent = nJobs;
