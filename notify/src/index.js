@@ -5,7 +5,7 @@
 // records. The phone itself fills in the details when the notification arrives.
 //
 // Once an hour it checks each phone: if today (in that phone's time zone) is on
-// its list and it is 6 AM or later, it sends one silent "wake up" push. The app
+// its list and it is the reminder hour (8 AM) or later, it sends one silent "wake up" push. The app
 // on the phone then shows the notification with the sow details.
 
 import { DurableObject } from 'cloudflare:workers';
@@ -238,7 +238,7 @@ export default {
           ? [...new Set(body.dates.filter((d) => typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d)))].sort().slice(0, MAX_DATES)
           : [];
         const tz = typeof body.tz === 'string' && validZone(body.tz) ? body.tz : 'America/Chicago';
-        const hour = Number.isInteger(body.hour) && body.hour >= 0 && body.hour <= 23 ? body.hour : 6;
+        const hour = Number.isInteger(body.hour) && body.hour >= 0 && body.hour <= 23 ? body.hour : 8;
         const ok = await store.saveSub(endpoint, dates, tz, hour);
         return ok ? reply(request, { ok: true, dates: dates.length }) : reply(request, { error: 'full' }, 429);
       }

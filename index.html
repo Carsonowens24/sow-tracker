@@ -411,10 +411,10 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
       <p class="hint" id="pushInfo" hidden></p>
     </div>
     <button type="button" class="btn wide" id="calBtn">Add reminders to Calendar</button>
-    <p class="hint">Makes a calendar file with each sow's expected return to heat and farrowing date, with an alert at 6 AM that day.</p>
+    <p class="hint">Makes a calendar file with each sow's expected return to heat and farrowing date, with an alert at 8 AM that day, plus a heads-up 5 days before each.</p>
     <p class="hint" id="fileLink" hidden></p>
   </section>
-  <p class="version" id="version">Version 14.1</p>
+  <p class="version" id="version">Version 14.2</p>
 </div>
 
 <div class="wrap" id="sowView" hidden>
@@ -1569,7 +1569,7 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
     b.appendChild(tagEl(o.sow));
     var who = el('span', 'who');
     who.appendChild(el('b', '', 'Bred to ' + o.bred.boar));
-    who.appendChild(el('small', '', 'Bred ' + shortDate(o.bred.date)));
+    who.appendChild(el('small', '', 'Bred ' + shortDate(o.bred.date) + (!done && left <= 5 ? ' · crate her' : '')));
     b.appendChild(who);
     var when = el('span', 'when');
     if (done) {
@@ -2154,13 +2154,15 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
         'SUMMARY:' + icsText(title),
         'DESCRIPTION:' + icsText(note),
         'TRANSP:TRANSPARENT',
-        'BEGIN:VALARM', 'ACTION:DISPLAY', 'DESCRIPTION:' + icsText(title), 'TRIGGER:PT6H', 'END:VALARM',
+        'BEGIN:VALARM', 'ACTION:DISPLAY', 'DESCRIPTION:' + icsText(title), 'TRIGGER:PT8H', 'END:VALARM',
         'END:VEVENT');
     }
     outlook().forEach(function (o) {
       var bredNote = o.bred ? 'Bred ' + niceDate(o.bred.date) + ' to ' + o.bred.boar + '.' : 'Not bred. Last heat ' + niceDate(o.lastHeat) + '.';
       if (!o.farrowedOn) add('heat', o, o.nextHeat, o.sow + ' due back in heat' + (o.bred ? ' (bred to ' + o.bred.boar + ')' : ''), bredNote + ' 21 days after her last heat.');
       if (o.farrow) add('farrow', o, o.farrow, o.sow + ' due to farrow', bredNote + ' 114 days after breeding.');
+      if (!o.farrowedOn) add('heat5', o, plusDays(o.nextHeat, -5), o.sow + ' due back in heat in 5 days', 'Expected ' + niceDate(o.nextHeat) + '. ' + bredNote);
+      if (o.farrow) add('crate', o, plusDays(o.farrow, -5), 'Put ' + o.sow + ' in a crate', 'Due to farrow ' + niceDate(o.farrow) + ', in 5 days. ' + bredNote);
     });
     openTasks().forEach(function (x) {
       add(x.t.k, { sow: 'litter-' + x.l.id }, x.due, 'Litter ' + x.l.num + ': ' + x.t.label.toLowerCase(), pedigree(x.l) + '. ' + x.t.age + ', farrowed ' + niceDate(x.l.date) + '.');
@@ -2233,7 +2235,8 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
   /* ---------- Notifications from the app ---------- */
   // Address of the notification service. Left empty until the service is running.
   var PUSH_URL = 'https://sow-tracker.carsonowens24.workers.dev';
-  var REMIND_HOUR = 6;   // 6 AM, phone's local time
+  var REMIND_HOUR = 8;   // 8 AM, phone's local time
+  var EARLY_DAYS = 5;    // extra heads-up this many days before a sow is due back in heat or due to farrow
 
   // What is due and when. The details stay on the phone; only the dates are sent to the service.
   function reminderList() {
@@ -2242,6 +2245,13 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
       var how = o.bred ? 'Bred to ' + o.bred.boar + ' on ' + shortDate(o.bred.date) : 'Not bred. Last heat ' + shortDate(o.lastHeat);
       if (!o.farrowedOn && daysUntil(o.nextHeat) >= 0) out.push({ date: o.nextHeat, title: o.sow + ' due back in heat', body: how });
       if (o.farrow && daysUntil(o.farrow) >= 0) out.push({ date: o.farrow, title: o.sow + ' due to farrow', body: how });
+      // Added heads-up, 5 days ahead of each of the two above
+      var heatEarly = plusDays(o.nextHeat, -EARLY_DAYS);
+      if (!o.farrowedOn && daysUntil(heatEarly) >= 0) out.push({ date: heatEarly, title: o.sow + ' due back in heat in ' + EARLY_DAYS + ' days', body: 'Expected ' + niceDate(o.nextHeat) + '. ' + how });
+      if (o.farrow) {
+        var crateDay = plusDays(o.farrow, -EARLY_DAYS);
+        if (daysUntil(crateDay) >= 0) out.push({ date: crateDay, title: 'Put ' + o.sow + ' in a crate', body: 'Due to farrow ' + niceDate(o.farrow) + ', in ' + EARLY_DAYS + ' days. ' + how });
+      }
     });
     // Litter jobs: one reminder per litter per day, e.g. "Litter 1: vaccinations and wean"
     var byDay = {};
@@ -2305,8 +2315,8 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
       $('pushInfo').hidden = !on;
       if (on) showPushInfo(sub);
       $('pushNote').textContent = on
-        ? 'On. You get one notification at 6 AM on any day something is due: a sow back in heat or due to farrow, or a litter job.'
-        : 'Get a notification at 6 AM on the day a sow is due, even when the app is closed.';
+        ? 'On. You get one notification at 8 AM on any day something is due: a sow back in heat or due to farrow, a 5-day heads-up for either, or a litter job.'
+        : 'Get a notification at 8 AM on the day a sow is due, even when the app is closed.';
     }).catch(function () {});
   }
   // Plain-language readout of what the notification service has on file for this phone

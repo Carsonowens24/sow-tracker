@@ -9,7 +9,7 @@ When sharing is turned on in the app, each phone sends its records here under a 
 ## Notifications
 
 - The app sends it the phone's push address, its time zone, and the **dates** on which something is due. It never receives sow names, boars or records.
-- Once an hour it checks whether today is on a phone's list. If so, and it is 6 AM or later there, it sends one "wake up" push. The app on the phone then shows the notification with the sow details, which never left the phone.
+- Once an hour it checks whether today is on a phone's list. If so, and it is the reminder hour (8 AM) or later there, it sends one "wake up" push. The app on the phone then shows the notification with the sow details, which never left the phone.
 
 ## Setting it up
 
