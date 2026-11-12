@@ -12,13 +12,14 @@ The app has six screens. Switch between them with the bar at the bottom.
 - **Coming in:** sows due back in heat.
 - **Farrowing** (the second half of the Breeding screen): every bred sow with her due date (114 days after breeding), soonest first. Each line is written as Dam – Boar – Due date. Overdue sows are outlined in red, and sows due today or tomorrow in orange. Tap a sow when she farrows and tap **Mark farrowed** to record the date; she moves to the **Farrowed** list and drops off Coming in. **Add a sow by due date** lets you enter a sow you only know the due date for: type the due date and the app fills in the date bred. By voice, say "Sow 118 is due November 16th bred to Hang Time".
 - **Vaccines:** jobs that come due as each litter gets older, counted from its farrowing date: **Parasail** at 10 days old, then **Vaccinations** and **Wean** at 3 weeks old. Overdue jobs are outlined in red and jobs due today or tomorrow in orange. Tap a job to mark it done with the date; for weaning you can also enter the number weaned. Jobs due show in the yellow bar on Home, in notifications (if turned on), and in calendar reminders. A litter needs a farrowing date to get jobs.
-- **Litters:** a numbered list of litters with each one's pedigree, for example "1  Hang Time × 10-7 QF". Tap a litter to see everything about it (number, sire, dam, number of males and females, farrowing date and notes), and tap **Edit litter** to change it. Add one with **Add litter**, or tap a breeding on the Breeding screen and choose **Add a litter from this breeding**. Litters are included in the spreadsheet export, restore, and sharing.
+- **Litters:** a numbered list of litters with each one's pedigree, for example "1  Hang Time × 10-7 QF". Tap a litter to see everything about it (number, sire, dam, number of males and females, farrowing date and notes), and tap **Edit litter** to change it. Add one with **Add litter**, or tap a sow on the Farrowing side of the Breeding screen and choose **Add a litter from this breeding**. Litters are included in the spreadsheet export, restore, and sharing.
 
 Archiving a finished season:
 
-- On the **Breeding**, **Heat** or **Litters** screen, tap **Options**, type a name such as "Fall 2026", and tap **Archive**. Everything on that screen moves into the archive and the screen is empty for the next season.
+- On the **Breeding** (either side of its switch), **Heat** or **Litters** screen, tap **Options**, type a name such as "Fall 2026", and tap **Archive**. Everything on that screen moves into the archive and the screen is empty for the next season.
 - Archived entries no longer count toward Coming in, vaccine jobs or reminders. Litter numbers start again at 1.
 - To look at archives, tap **See archives** at the bottom of Home (or in Options). Open one to see what is in it, rename it, **Bring back** its entries to their screen, or delete it for good.
+- Archiving the **Farrowing** side puts those sows away without touching their breedings, which stay on the Breedings side. Sows not yet marked farrowed stop sending farrowing reminders.
 - Archives are included in the spreadsheet export, restore, and sharing between phones.
 
 How to read the colors:

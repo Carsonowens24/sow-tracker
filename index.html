@@ -359,7 +359,7 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
     <ul>
       <li>1 &nbsp; Hang Time &times; 10-7 QF &nbsp; (5 males, 4 females)</li>
     </ul>
-    <p>You can also tap a breeding on the Breeding screen and choose &ldquo;Add a litter from this breeding&rdquo;.</p>
+    <p>You can also tap a sow on the Farrowing side of the Breeding screen and choose &ldquo;Add a litter from this breeding&rdquo;.</p>
   </div>
   <div class="empty" id="emptyHeat" hidden>
     <p>No heat records yet. Tap Add heat, or go to Home, tap the microphone and say:</p>
@@ -434,7 +434,7 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
     <p class="hint">Makes a calendar file with each sow's expected return to heat and farrowing date, with an alert at 8 AM that day, plus a heads-up 5 days before each.</p>
     <p class="hint" id="fileLink" hidden></p>
   </section>
-  <p class="version" id="version">Version 15</p>
+  <p class="version" id="version">Version 15.1</p>
 </div>
 
 <div class="wrap" id="sowView" hidden>
@@ -570,6 +570,7 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
     </div>
     <div class="actions">
       <button type="submit" class="btn go save" id="farSave">Mark farrowed</button>
+      <button type="button" class="btn" id="farLitter">Add a litter from this breeding</button>
       <button type="button" class="btn" id="farSow">See her history</button>
       <button type="button" class="btn" id="farCancel">Cancel</button>
       <button type="button" class="btn danger" id="farUndo" hidden>Mark as not farrowed</button>
@@ -671,7 +672,6 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
     <div class="actions">
       <button type="button" class="btn go save" id="choiceEdit">Edit breeding</button>
       <button type="button" class="btn" id="choiceSow">See her history</button>
-      <button type="button" class="btn" id="choiceLitter">Add a litter from this breeding</button>
       <button type="button" class="btn" id="choiceCancel">Cancel</button>
     </div>
   </form>
@@ -1000,7 +1000,8 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
         bred: bred,
         due: bred ? plusDays(bred.date, FARROW_DAYS) : null,            // her due date, farrowed or not
         farrowedOn: bred && bred.farrowed ? bred.farrowed : '',
-        farrow: bred && !bred.farrowed ? plusDays(bred.date, FARROW_DAYS) : null   // still waiting to farrow
+        farArch: bred && bred.farArch ? bred.farArch : '',               // put away in a Farrowing archive
+        farrow: bred && !bred.farrowed && !bred.farArch ? plusDays(bred.date, FARROW_DAYS) : null   // still waiting to farrow
       };
     });
   }
@@ -1350,9 +1351,13 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
     data.gone.push({ id: id, updated: Date.now() });
     save(); closeLitter(); render(); toast('Deleted');
   });
-  $('choiceLitter').addEventListener('click', function () {
-    closeChoice();
-    if (chosen) { setTab('litters'); openLitter({ sire: chosen.boar, dam: chosen.sow }); }
+  $('farLitter').addEventListener('click', function () {
+    var o = farrowNow;
+    if (!o) return;
+    var date = o.farrowedOn || '';
+    closeFarrow();
+    setTab('litters');
+    openLitter({ sire: o.bred.boar, dam: o.sow, date: date });
   });
 
   /* ---------- Vaccines and weaning: jobs that come due as a litter gets older ---------- */
@@ -1448,9 +1453,15 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
   /* ---------- Archives: put a finished season away under a name ---------- */
   // Archiving a screen moves everything on it into a named archive and leaves the screen empty for the next season.
   // Archived entries are kept (and backed up and shared) but no longer count toward due dates, jobs or reminders.
-  var TAB_WORDS = { breeding: ['breeding', 'breedings', 'Breedings'], heat: ['heat record', 'heat records', 'Heat'], litters: ['litter', 'litters', 'Litters'] };
-  function tabList(t) { return t === 'breeding' ? data.breedings : t === 'heat' ? data.heats : data.litters; }
-  function archiveItems(a) { return data.archived.filter(function (r) { return r.arch === a.id; }); }
+  var TAB_WORDS = { breeding: ['breeding', 'breedings', 'Breedings'], heat: ['heat record', 'heat records', 'Heat'], litters: ['litter', 'litters', 'Litters'], farrow: ['sow', 'sows', 'Farrowing'] };
+  // What is on the Farrowing side right now: the breeding record behind each sow listed there
+  function farrowList() { return outlook().filter(function (o) { return o.bred && !o.farArch; }).map(function (o) { return o.bred; }); }
+  function tabList(t) { return t === 'breeding' ? data.breedings : t === 'heat' ? data.heats : t === 'farrow' ? farrowList() : data.litters; }
+  // A Farrowing archive only tags the breeding (farArch); the breeding itself stays on the Breedings side.
+  function archiveItems(a) {
+    if (a.tab === 'farrow') return data.breedings.concat(data.archived).filter(function (r) { return r.farArch === a.id; });
+    return data.archived.filter(function (r) { return r.arch === a.id; });
+  }
   function seasonName() {
     var d = new Date(), m = d.getMonth();
     return (m < 2 || m === 11 ? 'Winter' : m < 5 ? 'Spring' : m < 8 ? 'Summer' : 'Fall') + ' ' + d.getFullYear();
@@ -1464,12 +1475,19 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
     var list = tabList(t).slice();
     if (!list.length) return 0;
     var a = makeArchive(name, t), now = Date.now();
+    if (t === 'farrow') { list.forEach(function (r) { r.farArch = a.id; r.updated = now; }); return list.length; }
     list.forEach(function (r) { r.arch = a.id; r.updated = now; data.archived.push(r); });
     if (t === 'breeding') data.breedings = []; else if (t === 'heat') data.heats = []; else data.litters = [];
     return list.length;
   }
   function restoreArchive(a) {
     var now = Date.now(), n = 0;
+    if (a.tab === 'farrow') {
+      archiveItems(a).forEach(function (r) { r.farArch = ''; r.updated = now; n++; });
+      data.archives = data.archives.filter(function (x) { return x.id !== a.id; });
+      data.gone.push({ id: a.id, updated: now });
+      return n;
+    }
     archiveItems(a).forEach(function (r) {
       delete r.arch; r.updated = now; n++;
       (r.kind === 'litter' ? data.litters : isHeat(r) ? data.heats : data.breedings).push(r);
@@ -1481,6 +1499,13 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
   }
   function deleteArchive(a) {
     var now = Date.now();
+    if (a.tab === 'farrow') {
+      // The breedings are not deleted, only kept off the Farrowing side for good
+      archiveItems(a).forEach(function (r) { r.farArch = 'deleted'; r.updated = now; });
+      data.archives = data.archives.filter(function (x) { return x.id !== a.id; });
+      data.gone.push({ id: a.id, updated: now });
+      return;
+    }
     archiveItems(a).forEach(function (r) { data.gone.push({ id: r.id, updated: now }); });
     data.archived = data.archived.filter(function (r) { return r.arch !== a.id; });
     data.archives = data.archives.filter(function (x) { return x.id !== a.id; });
@@ -1496,6 +1521,10 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
     $('optInfo').textContent = n
       ? 'Archiving moves ' + (n === 1 ? 'the 1 ' + w[0] : 'all ' + n + ' ' + w[1]) + ' on this screen into a named archive and clears the screen for the next season. You can look at an archive or bring it back at any time.'
         + (optTab === 'litters' ? ' Vaccine and weaning jobs for these litters will stop showing.' : optTab === 'breeding' ? ' These breedings will stop counting toward Coming in.' : '')
+        + (optTab === 'farrow' ? ' Their breedings stay on the Breedings side.' + (function () {
+            var waiting = tabList('farrow').filter(function (r) { return !r.farrowed; }).length;
+            return waiting ? ' ' + waiting + (waiting === 1 ? ' of them has' : ' of them have') + ' not been marked farrowed and will stop sending farrowing reminders.' : '';
+          })() : '')
       : 'There is nothing on this screen to archive yet.';
     $('optNameField').hidden = !n;
     $('optArchive').hidden = !n;
@@ -1574,12 +1603,17 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
     $('archDetail').hidden = false;
     $('archName').value = a.name;
     $('archInfo').textContent = items.length + ' ' + (items.length === 1 ? w[0] : w[1]) + ', archived ' + niceDate(toISO(new Date(a.created))) + '.'
-      + (a.tab === 'litters' ? ' Tap a litter to see its vaccine and weaning records.' : '');
+      + (a.tab === 'litters' ? ' Tap a litter to see its vaccine and weaning records.' : '')
+      + (a.tab === 'farrow' ? ' These sows are off the Farrowing side; their breedings are still on the Breedings side unless you archived those too.' : '');
     $('archRestore').textContent = 'Bring back to ' + w[2];
     disarmArchDelete();
     var rows = $('archRows');
     rows.textContent = '';
-    if (a.tab === 'litters') {
+    if (a.tab === 'farrow') {
+      items.slice().sort(function (x, y) { return x.date < y.date ? -1 : 1; }).forEach(function (r) {
+        rows.appendChild(frozenRow(makeFarrowRow({ sow: r.sow, bred: r, due: plusDays(r.date, FARROW_DAYS), farrowedOn: r.farrowed || '' })));
+      });
+    } else if (a.tab === 'litters') {
       items.slice().sort(function (x, y) { return String(x.num).localeCompare(String(y.num), undefined, { numeric: true }); })
         .forEach(function (l) { rows.appendChild(makeLitterRow(l, true)); });
     } else {
@@ -1689,7 +1723,6 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
     w.appendChild(el('b', '', heat ? STAGES[r.type] : 'Bred to ' + r.boar));
     w.appendChild(document.createTextNode(niceDate(r.date) + (heat && niceTime(r) ? ', ' + niceTime(r) : '')));
     $('choiceEdit').textContent = heat ? 'Edit heat record' : 'Edit breeding';
-    $('choiceLitter').hidden = heat;
     $('choice').hidden = false;
   }
   function closeChoice() { $('choice').hidden = true; }
@@ -1765,7 +1798,7 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
     $('manualBtn').hidden = tab !== 'breeding';
     $('manualHeatBtn').hidden = tab !== 'heat';
     $('manualLitterBtn').hidden = !isLitters;
-    $('optBtn').hidden = !(tab === 'breeding' || tab === 'heat' || isLitters);
+    $('optBtn').hidden = !(tab === 'breeding' || tab === 'heat' || isLitters || isFarrow);
     $('farrowAddBtn').hidden = !isFarrow;
     $('breedSwitch').hidden = !(tab === 'breeding' || isFarrow);
     $('swBreed').classList.toggle('on', tab === 'breeding');
@@ -1773,7 +1806,7 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
     $('swBreed').setAttribute('aria-pressed', tab === 'breeding');
     $('swFarrow').setAttribute('aria-pressed', isFarrow);
     $('farrowView').hidden = !isFarrow;
-    var farAll = outlook().filter(function (o) { return o.bred; });
+    var farAll = outlook().filter(function (o) { return o.bred && !o.farArch; });
     var farWaiting = farAll.filter(function (o) { return !o.farrowedOn; });
     if (isFarrow) {
       var fw = farWaiting.filter(match).sort(function (a, b) { return a.due < b.due ? -1 : a.due > b.due ? 1 : 0; });
@@ -2081,28 +2114,35 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
   });
 
   /* ---------- Backup: spreadsheet export and restore ---------- */
-  var CSV_HEAD = ['Type', 'Sow', 'Date', 'Time', 'Boar', 'Heat stage', 'Next heat expected', 'Expected farrowing', 'Litter number', 'Males', 'Females', 'Notes', 'Parasail given', 'Vaccinated', 'Weaned', 'Number weaned', 'Archive', 'Farrowed'];
+  var CSV_HEAD = ['Type', 'Sow', 'Date', 'Time', 'Boar', 'Heat stage', 'Next heat expected', 'Expected farrowing', 'Litter number', 'Males', 'Females', 'Notes', 'Parasail given', 'Vaccinated', 'Weaned', 'Number weaned', 'Archive', 'Farrowed', 'Farrowing archive'];
   function csvCell(v) {
     v = String(v == null ? '' : v);
     return /[",\r\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
+  }
+  function farArchName(r) {
+    if (!r.farArch) return '';
+    if (r.farArch === 'deleted') return '(deleted)';
+    var a = data.archives.filter(function (x) { return x.id === r.farArch; })[0];
+    return a ? a.name : '';
   }
   function csvRow(r, archName) {
     if (r.kind === 'litter') {
       // Litters: the dam goes in the Sow column, the sire in the Boar column, the farrowing date in Date
       return ['Litter', r.dam, r.date || '', '', r.sire, '', '', '', r.num, r.males == null ? '' : r.males, r.females == null ? '' : r.females, r.notes || '',
-        taskDone(r, 'parasail'), taskDone(r, 'vacc'), r.weaned || '', r.weanedCount == null ? '' : r.weanedCount, archName, ''];
+        taskDone(r, 'parasail'), taskDone(r, 'vacc'), r.weaned || '', r.weanedCount == null ? '' : r.weanedCount, archName, '', ''];
     }
     var heat = isHeat(r);
     return [
       heat ? 'Heat' : 'Breeding', r.sow, r.date, heat ? niceTime(r) : '',
       heat ? '' : r.boar, heat ? STAGES[r.type] : '',
       heat && r.type !== 'standing' ? '' : plusDays(r.date, HEAT_DAYS),
-      heat ? '' : plusDays(r.date, FARROW_DAYS), '', '', '', '', '', '', '', '', archName, heat ? '' : r.farrowed || ''
+      heat ? '' : plusDays(r.date, FARROW_DAYS), '', '', '', '', '', '', '', '', archName, heat ? '' : r.farrowed || '', heat ? '' : farArchName(r)
     ];
   }
   function buildCSV() {
     var rows = sorted(everything()).concat(sortedLitters()).map(function (r) { return csvRow(r, ''); });
     data.archives.forEach(function (a) {
+      if (a.tab === 'farrow') return;   // those breedings are already listed; the Farrowing archive column marks them
       archiveItems(a).forEach(function (r) { rows.push(csvRow(r, a.name)); });
     });
     return '﻿' + [CSV_HEAD].concat(rows).map(function (r) { return r.map(csvCell).join(','); }).join('\r\n') + '\r\n';
@@ -2189,6 +2229,9 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
       } else if (type === 'breeding') {
         rec = { sow: sow, boar: tidy(get(r, 'Boar')), date: date };
         if (readDate(get(r, 'Farrowed'))) rec.farrowed = readDate(get(r, 'Farrowed'));
+        var fa = tidy(get(r, 'Farrowing archive'));
+        if (fa === '(deleted)') rec.farArch = 'deleted';
+        else if (fa) rec.farArch = (data.archives.filter(function (x) { return x.tab === 'farrow' && key(x.name) === key(fa); })[0] || makeArchive(fa, 'farrow')).id;
       } else { bad++; return; }
       var pool = everything().concat(data.archived.filter(function (o) { return o.kind !== 'litter'; }));
       if (pool.some(function (o) { return sameEntry(o, rec); })) { skipped++; return; }
