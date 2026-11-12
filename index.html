@@ -245,11 +245,15 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
 .lnum.big { font-size: 30px; padding: 12px 16px; flex: none; }
 .dates b.plain { font-weight: 600; overflow-wrap: anywhere; }
 .row.done { opacity: 0.72; }
+.due .colhead { margin: 0 0 -2px; }
 .colhead { margin: 0 0 -8px; padding: 0 16px; color: var(--muted); font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
 .row.line { display: block; min-height: 64px; padding: 14px 16px; font-size: 19px; line-height: 1.35; overflow-wrap: break-word; }
 .row.line b { font-weight: 800; }
 .row.line .sep { color: var(--muted); padding: 0 2px; }
 .row.line small { display: block; color: var(--muted); font-size: 15px; }
+.row.line .nw { white-space: nowrap; }
+.row.line.late small { color: var(--danger); font-weight: 700; }
+.row.line.soon small { color: var(--soon); font-weight: 700; }
 .version { text-align: center; color: var(--muted); font-size: 14px; margin: 0; }
 .empty {
   border: 2px dashed var(--line);
@@ -358,6 +362,7 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
   </div>
   <div class="due" id="farrowView" hidden>
     <h2>Due to farrow</h2>
+    <p class="colhead" id="farHead">Dam &ndash; Boar &ndash; Due date</p>
     <ul class="list" id="farDue"></ul>
     <p class="none" id="farDueNone">No bred sows waiting to farrow. Sows show here once they have a breeding. Tap one when she farrows.</p>
     <h2>Farrowed</h2>
@@ -420,7 +425,7 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
     <p class="hint">Makes a calendar file with each sow's expected return to heat and farrowing date, with an alert at 8 AM that day, plus a heads-up 5 days before each.</p>
     <p class="hint" id="fileLink" hidden></p>
   </section>
-  <p class="version" id="version">Version 14.3</p>
+  <p class="version" id="version">Version 14.4</p>
 </div>
 
 <div class="wrap" id="sowView" hidden>
@@ -1037,22 +1042,30 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
     return el('span', 'tag' + (n > 8 ? ' long' : n > 4 ? ' mid' : ''), name);
   }
   // A breeding, written the way it is in the breeding book: Dam - Boar - Date bred
-  function makeBreedLine(r, onTap) {
+  // Breeding and Farrowing lists are written the way they are in the breeding book:
+  // the sow in bold, then the boar, then the date, separated by dashes. Example: Wide Open - Shockwave - Jul 28
+  function lineRow(parts, sub, cls, onTap) {
     var li = el('li');
-    var b = el('button', 'row line');
+    var b = el('button', 'row line' + (cls ? ' ' + cls : ''));
     b.type = 'button';
-    var d = fromISO(r.date);
-    var date = shortDate(r.date) + (d.getFullYear() !== new Date().getFullYear() ? ', ' + d.getFullYear() : '');
-    b.appendChild(el('b', '', r.sow));
-    b.appendChild(el('span', 'sep', ' – '));
-    b.appendChild(document.createTextNode(r.boar || 'boar not set'));
-    b.appendChild(el('span', 'sep', ' – '));
-    b.appendChild(document.createTextNode(date));
-    var n = serviceNumber(r);
-    if (n > 1) b.appendChild(el('small', '', ordinal(n) + ' breeding this heat'));
+    parts.forEach(function (part, i) {
+      if (i) b.appendChild(el('span', 'sep', ' \u2013 '));
+      var wrap = i === 0 ? el('b') : i === parts.length - 1 ? el('span', 'nw') : null;   // the date at the end stays in one piece
+      if (wrap) { wrap.textContent = part; b.appendChild(wrap); } else b.appendChild(document.createTextNode(part));
+    });
+    if (sub) b.appendChild(el('small', '', sub));
     b.addEventListener('click', onTap);
     li.appendChild(b);
     return li;
+  }
+  function dateShort(iso) {
+    var d = fromISO(iso);
+    return shortDate(iso) + (d.getFullYear() !== new Date().getFullYear() ? ', ' + d.getFullYear() : '');
+  }
+  // Dam - Boar - Date bred
+  function makeBreedLine(r, onTap) {
+    var n = serviceNumber(r);
+    return lineRow([r.sow, r.boar || 'boar not set', dateShort(r.date)], n > 1 ? ordinal(n) + ' breeding this heat' : '', '', onTap);
   }
   // One line in a list. Main lists show the sow's tag; her own page leads with what happened.
   function makeRow(r, withTag, onTap) {
@@ -1585,28 +1598,14 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
   });
 
   /* ---------- Farrowing: every bred sow with her due date, and marking her farrowed ---------- */
+  // Dam - Boar - Due date (or the date she farrowed)
   function makeFarrowRow(o) {
     var done = o.farrowedOn, left = daysUntil(o.due);
-    var li = el('li');
-    var b = el('button', 'row' + (done ? ' done' : left < 0 ? ' late' : left <= 1 ? ' soon' : ''));
-    b.type = 'button';
-    b.appendChild(tagEl(o.sow));
-    var who = el('span', 'who');
-    who.appendChild(el('b', '', 'Bred to ' + o.bred.boar));
-    who.appendChild(el('small', '', 'Bred ' + shortDate(o.bred.date) + (!done && left <= 5 ? ' · crate her' : '')));
-    b.appendChild(who);
-    var when = el('span', 'when');
-    if (done) {
-      when.appendChild(el('b', '', 'Farrowed'));
-      when.appendChild(document.createTextNode(shortDate(done)));
-    } else {
-      when.appendChild(el('b', left < 0 ? 'late' : left <= 1 ? 'soon' : '', niceDate(o.due)));
-      when.appendChild(document.createTextNode(dueText(o.due)));
-    }
-    b.appendChild(when);
-    b.addEventListener('click', function () { openFarrow(o); });
-    li.appendChild(b);
-    return li;
+    return lineRow(
+      [o.sow, o.bred.boar, done ? 'Farrowed ' + dateShort(done) : dateShort(o.due)],
+      done ? 'Bred ' + shortDate(o.bred.date) : dueText(o.due) + ' \u00B7 bred ' + shortDate(o.bred.date) + (left <= 5 ? ' \u00B7 crate her' : ''),
+      done ? 'done' : left < 0 ? 'late' : left <= 1 ? 'soon' : '',
+      function () { openFarrow(o); });
   }
   var farrowNow = null;
   function openFarrow(o) {
@@ -1750,6 +1749,7 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
       fw.forEach(function (o) { $('farDue').appendChild(makeFarrowRow(o)); });
       fdn.forEach(function (o) { $('farDone').appendChild(makeFarrowRow(o)); });
       $('farDueNone').hidden = fw.length > 0;
+      $('farHead').hidden = fw.length === 0;
       $('farDoneNone').hidden = fdn.length > 0;
     }
     $('archCount').textContent = data.archives.length
