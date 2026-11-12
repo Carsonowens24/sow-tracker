@@ -372,9 +372,6 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
     <h2>Due back in heat</h2>
     <ul class="list" id="dueHeat"></ul>
     <p class="none" id="dueHeatNone">No sows due back in the next 3 weeks.</p>
-    <h2>Due to farrow</h2>
-    <ul class="list" id="dueFarrow"></ul>
-    <p class="none" id="dueFarrowNone">No sows due to farrow in the next 2 weeks.</p>
   </div>
   <div class="empty" id="nomatch" hidden><p>Nothing matches that search.</p></div>
   <section class="tools" id="tools" aria-label="Backup and reminders">
@@ -417,7 +414,7 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
     <p class="hint">Makes a calendar file with each sow's expected return to heat and farrowing date, with an alert at 6 AM that day.</p>
     <p class="hint" id="fileLink" hidden></p>
   </section>
-  <p class="version" id="version">Version 14</p>
+  <p class="version" id="version">Version 14.1</p>
 </div>
 
 <div class="wrap" id="sowView" hidden>
@@ -441,7 +438,7 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
   <button type="button" data-go="breeding"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14v16H5zM9 9h6M9 13h6M9 17h3"/></svg>Breeding</button>
   <button type="button" data-go="heat"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3c1 4 5 6 5 11a5 5 0 0 1-10 0c0-2 1-3 2-4 0 2 1 3 2 3 0-4-1-6 1-10z"/></svg>Heat</button>
   <button type="button" data-go="due"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16v14H4zM4 10h16M8 3v4M16 3v4"/></svg>Coming in<span class="badge" id="navBadge" hidden></span></button>
-  <button type="button" data-go="farrow"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20s-7-4.6-7-10.2A4 4 0 0 1 12 7.4a4 4 0 0 1 7 2.400C19 15.400 12 20 12 20z"/></svg>Farrowing</button>
+  <button type="button" data-go="farrow"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20s-7-4.6-7-10.2A4 4 0 0 1 12 7.4a4 4 0 0 1 7 2.400C19 15.400 12 20 12 20z"/></svg>Farrowing<span class="badge" id="navBadgeF" hidden></span></button>
   <button type="button" data-go="litters"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11M4 6h.5M4 12h.5M4 18h.5"/></svg>Litters</button>
   <button type="button" data-go="vacc"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17 3l4 4M19 5l-3 3M14 6l4 4-8.5 8.5H5.5v-4zM9 11l2 2M4 20l1.5-1.5"/></svg>Vaccines<span class="badge" id="navBadgeV" hidden></span></button>
 </nav>
@@ -1693,7 +1690,7 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
     var soonF = due.farrow.filter(function (o) { return daysUntil(o.farrow) <= 1; }).length;
     var bar = $('dueAlert');
     bar.hidden = soonH + soonF + soonT === 0;
-    bar.setAttribute('data-to', soonH + soonF ? 'due' : 'vacc');
+    bar.setAttribute('data-to', soonH ? 'due' : soonF ? 'farrow' : 'vacc');
     bar.textContent = '';
     if (soonH + soonF + soonT) {
       var parts = [];
@@ -1756,11 +1753,9 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
     var all = [], rows = [];
     if (isDue) {
       var dh = due.heat.filter(match), df = due.farrow.filter(match);
-      $('dueHeat').textContent = ''; $('dueFarrow').textContent = '';
+      $('dueHeat').textContent = '';
       dh.forEach(function (o) { $('dueHeat').appendChild(makeDueRow(o, 'nextHeat')); });
-      df.forEach(function (o) { $('dueFarrow').appendChild(makeDueRow(o, 'farrow')); });
       $('dueHeatNone').hidden = dh.length > 0;
-      $('dueFarrowNone').hidden = df.length > 0;
     } else if (isLitters) {
       all = sortedLitters();
       rows = all.filter(matchLitter);
@@ -1777,10 +1772,12 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
     $('emptyLitters').hidden = !(isLitters && all.length === 0);
     $('nomatch').hidden = !(!isDue && all.length > 0 && rows.length === 0);
     var nb = data.breedings.length, nh = data.heats.length;
-    var nDue = due.heat.length + due.farrow.length;
+    var nDue = due.heat.length;   // Coming in is heat only; sows due to farrow are on the Farrowing screen
     $('count').textContent = tab === 'breeding' ? plural(nb, 'breeding') : tab === 'heat' ? plural(nh, 'heat record') : tab === 'due' ? nDue + ' due' : isLitters ? plural(data.litters.length, 'litter') : isVacc ? jobsOpen.length + ' to do' : isFarrow ? farWaiting.length + ' due' : '';
     $('navBadge').hidden = !nDue;
     $('navBadge').textContent = nDue;
+    $('navBadgeF').hidden = !due.farrow.length;
+    $('navBadgeF').textContent = due.farrow.length;
     var nJobs = jobsOpen.filter(function (x) { return daysUntil(x.due) <= 3; }).length;
     $('navBadgeV').hidden = !nJobs;
     $('navBadgeV').textContent = nJobs;

@@ -9,7 +9,7 @@ The app has seven screens. Switch between them with the bar at the bottom.
 - **Home:** the farm logo, the microphone, and backup and reminder buttons.
 - **Breeding:** every breeding, newest first, with an **Add breeding** button.
 - **Heat:** every heat record, with an **Add heat** button.
-- **Coming in:** sows due back in heat or due to farrow.
+- **Coming in:** sows due back in heat.
 - **Farrowing:** every bred sow with her due date (114 days after breeding), soonest first. Overdue sows are outlined in red, and sows due today or tomorrow in orange. Tap a sow when she farrows and tap **Mark farrowed** to record the date; she moves to the **Farrowed** list and drops off Coming in. **Add a sow by due date** lets you enter a sow you only know the due date for: type the due date and the app fills in the date bred. By voice, say "Sow 118 is due November 16th bred to Hang Time".
 - **Vaccines:** jobs that come due as each litter gets older, counted from its farrowing date: **Parasail** at 10 days old, then **Vaccinations** and **Wean** at 3 weeks old. Overdue jobs are outlined in red and jobs due today or tomorrow in orange. Tap a job to mark it done with the date; for weaning you can also enter the number weaned. Jobs due show in the yellow bar on Home, in notifications (if turned on), and in calendar reminders. A litter needs a farrowing date to get jobs.
 - **Litters:** a numbered list of litters with each one's pedigree, for example "1  Hang Time × 10-7 QF". Tap a litter to see everything about it (number, sire, dam, number of males and females, farrowing date and notes), and tap **Edit litter** to change it. Add one with **Add litter**, or tap a breeding on the Breeding screen and choose **Add a litter from this breeding**. Litters are included in the spreadsheet export, restore, and sharing.
@@ -46,7 +46,7 @@ How to read the colors:
 - **Helpful dates.** Worked out for you on each sow's page:
   - Next heat: 21 days after her last heat (first standing if you logged it, otherwise her first breeding or heat signs).
   - Due to farrow: 114 days after the first breeding of her latest heat.
-- **Coming in tab.** Sows due back in heat in the next 3 weeks (so a sow shows up the day she is bred, marked "Bred to" and the boar's name) and sows due to farrow in the next 2 weeks, soonest first. Overdue ones stay on the list for a week. A bred sow drops off the "due back" list once she is a week past her date with no new heat logged.
+- **Coming in tab.** Sows due back in heat in the next 3 weeks (so a sow shows up the day she is bred, marked "Bred to" and the boar's name), soonest first. Sows due to farrow are on the Farrowing screen. Overdue ones stay on the list for a week. A bred sow drops off the "due back" list once she is a week past her date with no new heat logged.
 - **Yellow bar.** When you open the app, a yellow bar at the top tells you how many sows are due now or by tomorrow. Tap it to see them. The app cannot send notifications while it is closed.
 - **Edit from the list.** Tap any breeding or heat record in the main list, then choose **Edit** or **See her history**.
 - **Export spreadsheet (CSV).** At the bottom of the main screen. Makes a file with every breeding and heat record that opens in Excel, Numbers or Google Sheets. On an iPhone the Share sheet opens: choose **Save to Files** or **Mail** to send it to yourself.
