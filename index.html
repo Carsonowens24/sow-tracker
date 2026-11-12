@@ -203,19 +203,19 @@ input[type="text"], input[type="search"], input[type="date"], input[type="time"]
 body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
 .nav {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 15;
-  display: grid; grid-template-columns: repeat(6, 1fr);
+  display: grid; grid-template-columns: repeat(7, 1fr);
   background: var(--surface); border-top: 2px solid var(--line);
   padding-bottom: env(safe-area-inset-bottom, 0px);
   padding-left: env(safe-area-inset-left, 0px); padding-right: env(safe-area-inset-right, 0px);
 }
 .nav button {
   min-height: 68px; border: 0; background: transparent; color: var(--muted);
-  font-weight: 700; font-size: 12px; padding: 6px 0; white-space: nowrap; letter-spacing: -0.01em;
+  font-weight: 700; font-size: 11px; padding: 6px 0; white-space: nowrap; letter-spacing: -0.02em;
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
 }
 .nav svg { width: 28px; height: 28px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .nav button.on { color: var(--ink); box-shadow: inset 0 5px 0 var(--go); }
-.nav .badge { position: absolute; top: 6px; margin-left: 28px; min-width: 22px; height: 22px; padding: 0 6px; border-radius: 11px; background: var(--tag); color: var(--tag-ink); font-size: 13px; line-height: 22px; font-weight: 800; }
+.nav .badge { position: absolute; top: 6px; margin-left: 26px; min-width: 22px; height: 22px; padding: 0 6px; border-radius: 11px; background: var(--tag); color: var(--tag-ink); font-size: 13px; line-height: 22px; font-weight: 800; }
 .nav button { position: relative; }
 .toast { bottom: calc(96px + env(safe-area-inset-bottom, 0px)) !important; }
 .splash { position: fixed; inset: 0; z-index: 50; background: #ffffff; display: flex; align-items: center; justify-content: center; pointer-events: none; animation: splashOut 0.35s ease 0.85s forwards; }
@@ -322,6 +322,7 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
     <button type="button" class="btn go wide" id="manualBtn">Add breeding</button>
     <button type="button" class="btn go wide" id="manualHeatBtn">Add heat</button>
     <button type="button" class="btn go wide" id="manualLitterBtn">Add litter</button>
+    <button type="button" class="btn go wide" id="farrowAddBtn">Add a sow by due date</button>
     <button type="button" class="btn wide" id="optBtn">Options</button>
     <input type="search" id="search" placeholder="Find a sow" autocomplete="off" aria-label="Find a sow">
   </section>
@@ -348,6 +349,14 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
       <li>&ldquo;Sow 118 first standing this morning&rdquo;</li>
       <li>&ldquo;118 went out yesterday&rdquo;</li>
     </ul>
+  </div>
+  <div class="due" id="farrowView" hidden>
+    <h2>Due to farrow</h2>
+    <ul class="list" id="farDue"></ul>
+    <p class="none" id="farDueNone">No bred sows waiting to farrow. Sows show here once they have a breeding. Tap one when she farrows.</p>
+    <h2>Farrowed</h2>
+    <ul class="list" id="farDone"></ul>
+    <p class="none" id="farDoneNone">None marked farrowed yet.</p>
   </div>
   <div class="due" id="vaccView" hidden>
     <p class="none" id="vaccIntro">Each litter with a farrowing date gets three jobs: Parasail at 10 days old, then vaccinations and weaning at 3 weeks old. Tap a job to mark it done.</p>
@@ -408,7 +417,7 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
     <p class="hint">Makes a calendar file with each sow's expected return to heat and farrowing date, with an alert at 6 AM that day.</p>
     <p class="hint" id="fileLink" hidden></p>
   </section>
-  <p class="version" id="version">Version 13.3</p>
+  <p class="version" id="version">Version 14</p>
 </div>
 
 <div class="wrap" id="sowView" hidden>
@@ -432,8 +441,9 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
   <button type="button" data-go="breeding"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14v16H5zM9 9h6M9 13h6M9 17h3"/></svg>Breeding</button>
   <button type="button" data-go="heat"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3c1 4 5 6 5 11a5 5 0 0 1-10 0c0-2 1-3 2-4 0 2 1 3 2 3 0-4-1-6 1-10z"/></svg>Heat</button>
   <button type="button" data-go="due"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16v14H4zM4 10h16M8 3v4M16 3v4"/></svg>Coming in<span class="badge" id="navBadge" hidden></span></button>
-  <button type="button" data-go="vacc"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17 3l4 4M19 5l-3 3M14 6l4 4-8.5 8.5H5.5v-4zM9 11l2 2M4 20l1.5-1.5"/></svg>Vaccines<span class="badge" id="navBadgeV" hidden></span></button>
+  <button type="button" data-go="farrow"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20s-7-4.6-7-10.2A4 4 0 0 1 12 7.4a4 4 0 0 1 7 2.400C19 15.400 12 20 12 20z"/></svg>Farrowing</button>
   <button type="button" data-go="litters"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11M4 6h.5M4 12h.5M4 18h.5"/></svg>Litters</button>
+  <button type="button" data-go="vacc"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17 3l4 4M19 5l-3 3M14 6l4 4-8.5 8.5H5.5v-4zM9 11l2 2M4 20l1.5-1.5"/></svg>Vaccines<span class="badge" id="navBadgeV" hidden></span></button>
 </nav>
 
 <div class="sheet" id="sheet" hidden>
@@ -464,6 +474,11 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
         <button type="button" class="chip" data-day="0">Today</button>
         <button type="button" class="chip" data-day="-1">Yesterday</button>
       </div>
+    </div>
+    <div class="field" id="dueField">
+      <label for="fDue">Or her due date (fills in the date bred)</label>
+      <input type="date" id="fDue">
+      <p class="hint" id="dueHint"></p>
     </div>
     <div class="field" id="timeField">
       <label for="fTime">Time (optional)</label>
@@ -523,6 +538,27 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
       </div>
     </div>
   </div>
+</div>
+
+<div class="sheet" id="farrowSheet" hidden>
+  <form id="farrowForm" novalidate>
+    <h2 id="farTitle">Mark farrowed</h2>
+    <p class="heard" id="farInfo"></p>
+    <div class="field">
+      <label for="farDate">Date farrowed</label>
+      <input type="date" id="farDate">
+      <div class="chips">
+        <button type="button" class="chip" data-fday="0">Today</button>
+        <button type="button" class="chip" data-fday="-1">Yesterday</button>
+      </div>
+    </div>
+    <div class="actions">
+      <button type="submit" class="btn go save" id="farSave">Mark farrowed</button>
+      <button type="button" class="btn" id="farSow">See her history</button>
+      <button type="button" class="btn" id="farCancel">Cancel</button>
+      <button type="button" class="btn danger" id="farUndo" hidden>Mark as not farrowed</button>
+    </div>
+  </form>
 </div>
 
 <div class="sheet" id="taskSheet" hidden>
@@ -676,9 +712,15 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
   }
   function monthNum(s) { return 'janfebmaraprmayjunjulaugsepoctnovdec'.indexOf(s.toLowerCase().slice(0, 3)) / 3; }
   // A date said without a year means the most recent one, never one in the future.
+  var preferFuture = false;   // set while reading a due date, which is usually ahead of today
   function recent(month, day, year, now) {
     if (year) return new Date(year < 100 ? 2000 + year : year, month, day);
     var d = new Date(now.getFullYear(), month, day);
+    if (preferFuture) {
+      if (d < addDays(now, -60)) d = new Date(now.getFullYear() + 1, month, day);
+      else if (d > addDays(now, 300)) d = new Date(now.getFullYear() - 1, month, day);
+      return d;
+    }
     if (d > addDays(now, 1)) d = new Date(now.getFullYear() - 1, month, day);
     return d;
   }
@@ -696,9 +738,11 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
         function (m) { return addDays(now, -(SMALL[m[1].toLowerCase()] || +m[1])); }],
       [/\b(?:the\s+)?day\s+before\s+yesterday\b/i, function () { return addDays(now, -2); }],
       [/\byesterday(?:\s+(?:morning|afternoon|evening))?\b|\blast\s+night\b/i, function () { return addDays(now, -1); }],
+      [/\btomorrow\b/i, function () { return addDays(now, 1); }],
       [/\btoday\b|\btonight\b|\bthis\s+(?:morning|afternoon|evening)\b|\bjust\s+now\b/i, function () { return addDays(now, 0); }],
       [/\b(?:on\s+)?(last\s+)?(sunday|monday|tuesday|wednesday|thursday|friday|saturday)\b/i,
         function (m) {
+          if (preferFuture && !m[1]) return addDays(now, (WEEKDAYS.indexOf(m[2].toLowerCase()) - now.getDay() + 7) % 7);
           var back = (now.getDay() - WEEKDAYS.indexOf(m[2].toLowerCase()) + 7) % 7;
           if (back === 0 && m[1]) back = 7;
           return addDays(now, -back);
@@ -706,6 +750,7 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
       [new RegExp('\\bon\\s+the\\s+' + DAY_RE + '\\b', 'i'),
         function (m) {
           var x = new Date(now.getFullYear(), now.getMonth(), dayNum(m[1]));
+          if (preferFuture) return x < addDays(now, -20) ? new Date(now.getFullYear(), now.getMonth() + 1, dayNum(m[1])) : x;
           if (x > addDays(now, 1)) x = new Date(now.getFullYear(), now.getMonth() - 1, dayNum(m[1]));
           return x;
         }]
@@ -789,7 +834,13 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
   var BRED = '(?:bred|bread|breed|brad)';
   function parseEntry(raw, now) {
     var tm = extractTime(raw);
+    // "Sow 118 is due November 16th": the date is her due date, so the breeding date is 114 days earlier
+    var dueSaid = /\bdue\b/i.test(tm.rest);
+    if (dueSaid) tm.rest = tm.rest.replace(/\b(?:(?:is|was)\s+)?due(?:\s+to\s+farrow)?\b/i, ' ');
+    preferFuture = dueSaid;
     var got = extractDate(tm.rest, now || new Date());
+    preferFuture = false;
+    if (dueSaid && got.said) got.date = plusDays(got.date, -FARROW_DAYS);
     var t = tidy(got.rest.replace(/\b(?:(?:in\s+the|this|that)\s+)?(?:morning|afternoon|evening)\b/gi, ' '));
     var base = { date: got.date, dateSaid: got.said, time: tm.time, part: tm.part };
 
@@ -931,7 +982,9 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
         lastHeat: ref,
         nextHeat: plusDays(ref, HEAT_DAYS),
         bred: bred,
-        farrow: bred ? plusDays(bred.date, FARROW_DAYS) : null
+        due: bred ? plusDays(bred.date, FARROW_DAYS) : null,            // her due date, farrowed or not
+        farrowedOn: bred && bred.farrowed ? bred.farrowed : '',
+        farrow: bred && !bred.farrowed ? plusDays(bred.date, FARROW_DAYS) : null   // still waiting to farrow
       };
     });
   }
@@ -940,7 +993,7 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
     var all = outlook();
     function byDate(f) { return function (a, b) { return a[f] < b[f] ? -1 : a[f] > b[f] ? 1 : 0; }; }
     return {
-      heat: all.filter(function (o) { return inWindow(o.nextHeat, HEAT_LOOK_AHEAD); }).sort(byDate('nextHeat')),
+      heat: all.filter(function (o) { return !o.farrowedOn && inWindow(o.nextHeat, HEAT_LOOK_AHEAD); }).sort(byDate('nextHeat')),
       farrow: all.filter(function (o) { return o.farrow && inWindow(o.farrow); }).sort(byDate('farrow'))
     };
   }
@@ -1052,8 +1105,14 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
       d.appendChild(v);
       dates.appendChild(d);
     }
-    if (mine && daysUntil(mine.nextHeat) >= -KEEP_OVERDUE) dateLine(mine.bred ? 'Back in heat if not settled' : 'Next heat expected', mine.nextHeat);
-    if (mine && mine.farrow && daysUntil(mine.farrow) >= -KEEP_OVERDUE) dateLine('Due to farrow', mine.farrow);
+    if (mine && !mine.farrowedOn && daysUntil(mine.nextHeat) >= -KEEP_OVERDUE) dateLine(mine.bred ? 'Back in heat if not settled' : 'Next heat expected', mine.nextHeat);
+    if (mine && mine.farrow) dateLine('Due to farrow', mine.farrow);
+    if (mine && mine.farrowedOn) {
+      var fd = el('div');
+      fd.appendChild(el('span', '', 'Farrowed'));
+      fd.appendChild(el('b', '', niceDate(mine.farrowedOn)));
+      dates.appendChild(fd);
+    }
     var list = $('sowList');
     list.textContent = '';
     rows.forEach(function (r) {
@@ -1504,6 +1563,75 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
     toast('Archive deleted');
   });
 
+  /* ---------- Farrowing: every bred sow with her due date, and marking her farrowed ---------- */
+  function makeFarrowRow(o) {
+    var done = o.farrowedOn, left = daysUntil(o.due);
+    var li = el('li');
+    var b = el('button', 'row' + (done ? ' done' : left < 0 ? ' late' : left <= 1 ? ' soon' : ''));
+    b.type = 'button';
+    b.appendChild(tagEl(o.sow));
+    var who = el('span', 'who');
+    who.appendChild(el('b', '', 'Bred to ' + o.bred.boar));
+    who.appendChild(el('small', '', 'Bred ' + shortDate(o.bred.date)));
+    b.appendChild(who);
+    var when = el('span', 'when');
+    if (done) {
+      when.appendChild(el('b', '', 'Farrowed'));
+      when.appendChild(document.createTextNode(shortDate(done)));
+    } else {
+      when.appendChild(el('b', left < 0 ? 'late' : left <= 1 ? 'soon' : '', niceDate(o.due)));
+      when.appendChild(document.createTextNode(dueText(o.due)));
+    }
+    b.appendChild(when);
+    b.addEventListener('click', function () { openFarrow(o); });
+    li.appendChild(b);
+    return li;
+  }
+  var farrowNow = null;
+  function openFarrow(o) {
+    farrowNow = o;
+    var done = o.farrowedOn;
+    $('farTitle').textContent = o.sow + (done ? ' farrowed' : ': mark farrowed');
+    $('farInfo').textContent = 'Bred to ' + o.bred.boar + ' on ' + niceDate(o.bred.date) + '. Due ' + niceDate(o.due) + '.';
+    $('farDate').value = done || toISO(new Date());
+    $('farSave').textContent = done ? 'Save date' : 'Mark farrowed';
+    $('farUndo').hidden = !done;
+    $('farSow').hidden = false;
+    $('farrowSheet').hidden = false;
+    $('farrowSheet').scrollTop = 0;
+  }
+  function closeFarrow() { $('farrowSheet').hidden = true; farrowNow = null; }
+  $('farCancel').addEventListener('click', closeFarrow);
+  $('farSow').addEventListener('click', function () { var o = farrowNow; closeFarrow(); if (o) openSow(o.sow); });
+  Array.prototype.forEach.call(document.querySelectorAll('[data-fday]'), function (c) {
+    c.addEventListener('click', function () { $('farDate').value = toISO(addDays(new Date(), +c.getAttribute('data-fday'))); });
+  });
+  $('farrowForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var o = farrowNow, date = $('farDate').value;
+    if (!o) return;
+    if (!date) { toast('Pick the date she farrowed'); return; }
+    var msg = o.sow + ' marked farrowed';
+    o.bred.farrowed = date; o.bred.updated = Date.now();
+    var ok = save();
+    closeFarrow();
+    render();
+    if (ok) { flashSaved(); toast(msg); }
+  });
+  $('farUndo').addEventListener('click', function () {
+    var o = farrowNow;
+    if (!o) return;
+    o.bred.farrowed = ''; o.bred.updated = Date.now();
+    save(); closeFarrow(); render();
+    toast('Marked as not farrowed');
+  });
+  $('farrowAddBtn').addEventListener('click', function () {
+    openSheet('breeding', null, null);
+    $('sheetTitle').textContent = 'New sow by due date';
+    $('fDate').value = ''; $('fDue').value = '';
+    $('fDue').focus();
+  });
+
   /* ---------- Tapped an entry in a main list: edit it, or open the sow ---------- */
   var chosen = null;
   function openChoice(r) {
@@ -1531,7 +1659,7 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
 
   // Which screen is showing: home, breeding, heat or due (Coming in)
   var tab = 'home';
-  var TITLES = { breeding: 'Breedings', heat: 'Heat', due: 'Coming in', litters: 'Litters', vacc: 'Vaccines' };
+  var TITLES = { breeding: 'Breedings', heat: 'Heat', due: 'Coming in', litters: 'Litters', vacc: 'Vaccines', farrow: 'Farrowing' };
   function setTab(t) {
     if (currentSow != null) closeSow();
     tab = t;
@@ -1554,7 +1682,7 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
     var q = key(searchEl.value);
     function match(r) { return !q || key(r.sow).indexOf(q) !== -1; }
     function matchLitter(l) { return !q || key(l.num + ' ' + pedigree(l)).indexOf(q) !== -1; }
-    var isLitters = tab === 'litters', isVacc = tab === 'vacc';
+    var isLitters = tab === 'litters', isVacc = tab === 'vacc', isFarrow = tab === 'farrow';
     var jobs = litterTasks();
     var jobsOpen = jobs.filter(function (x) { return !x.done; });
     var soonT = jobsOpen.filter(function (x) { return daysUntil(x.due) <= 1; }).length;
@@ -1590,11 +1718,24 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
     $('manualHeatBtn').hidden = tab !== 'heat';
     $('manualLitterBtn').hidden = !isLitters;
     $('optBtn').hidden = !(tab === 'breeding' || tab === 'heat' || isLitters);
+    $('farrowAddBtn').hidden = !isFarrow;
+    $('farrowView').hidden = !isFarrow;
+    var farAll = outlook().filter(function (o) { return o.bred; });
+    var farWaiting = farAll.filter(function (o) { return !o.farrowedOn; });
+    if (isFarrow) {
+      var fw = farWaiting.filter(match).sort(function (a, b) { return a.due < b.due ? -1 : a.due > b.due ? 1 : 0; });
+      var fdn = farAll.filter(function (o) { return o.farrowedOn; }).filter(match).sort(function (a, b) { return a.farrowedOn < b.farrowedOn ? 1 : -1; });
+      $('farDue').textContent = ''; $('farDone').textContent = '';
+      fw.forEach(function (o) { $('farDue').appendChild(makeFarrowRow(o)); });
+      fdn.forEach(function (o) { $('farDone').appendChild(makeFarrowRow(o)); });
+      $('farDueNone').hidden = fw.length > 0;
+      $('farDoneNone').hidden = fdn.length > 0;
+    }
     $('archCount').textContent = data.archives.length
       ? plural(data.archives.length, 'archive') + ' saved. To archive more, open Breeding, Heat or Litters and tap Options.'
       : 'Finished seasons you have put away. To archive, open Breeding, Heat or Litters and tap Options.';
     searchEl.placeholder = isLitters || isVacc ? 'Find a litter, sire or dam' : 'Find a sow';
-    listEl.hidden = isDue || isHome || isVacc;
+    listEl.hidden = isDue || isHome || isVacc || isFarrow;
     $('vaccView').hidden = !isVacc;
     if (isVacc) {
       var mt = function (x) { return matchLitter(x.l); };
@@ -1625,7 +1766,7 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
       rows = all.filter(matchLitter);
       rows.forEach(function (l) { listEl.appendChild(makeLitterRow(l)); });
     } else {
-      all = isHome || isVacc ? [] : sorted(tab === 'heat' ? data.heats : data.breedings);
+      all = isHome || isVacc || isFarrow ? [] : sorted(tab === 'heat' ? data.heats : data.breedings);
       rows = all.filter(match);
       rows.forEach(function (r) {
         listEl.appendChild(makeRow(r, true, function () { openChoice(r); }));
@@ -1637,7 +1778,7 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
     $('nomatch').hidden = !(!isDue && all.length > 0 && rows.length === 0);
     var nb = data.breedings.length, nh = data.heats.length;
     var nDue = due.heat.length + due.farrow.length;
-    $('count').textContent = tab === 'breeding' ? plural(nb, 'breeding') : tab === 'heat' ? plural(nh, 'heat record') : tab === 'due' ? nDue + ' due' : isLitters ? plural(data.litters.length, 'litter') : isVacc ? jobsOpen.length + ' to do' : '';
+    $('count').textContent = tab === 'breeding' ? plural(nb, 'breeding') : tab === 'heat' ? plural(nh, 'heat record') : tab === 'due' ? nDue + ' due' : isLitters ? plural(data.litters.length, 'litter') : isVacc ? jobsOpen.length + ' to do' : isFarrow ? farWaiting.length + ' due' : '';
     $('navBadge').hidden = !nDue;
     $('navBadge').textContent = nDue;
     var nJobs = jobsOpen.filter(function (x) { return daysUntil(x.due) <= 3; }).length;
@@ -1711,6 +1852,8 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
     $('stageField').hidden = !heat;
     $('timeField').hidden = !heat;
     $('dateLabel').textContent = heat ? 'Date' : 'Date bred';
+    $('dueField').hidden = heat;
+    syncDue('bred');
     $('deleteBtn').hidden = !editing;
     disarmDelete();
     var chips = $('boarChips');
@@ -1725,9 +1868,20 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
     $('sheet').scrollTop = 0;
   }
   function closeSheet() { $('sheet').hidden = true; editing = null; }
+  // The date bred and the due date are always 114 days apart. Change either one and the other follows.
+  function syncDue(changed) {
+    if (changed === 'due') $('fDate').value = $('fDue').value ? plusDays($('fDue').value, -FARROW_DAYS) : '';
+    else $('fDue').value = $('fDate').value ? plusDays($('fDate').value, FARROW_DAYS) : '';
+    $('dueHint').textContent = $('fDate').value && $('fDue').value
+      ? 'Bred ' + niceDate($('fDate').value) + ', due ' + niceDate($('fDue').value) + ' (114 days).' : '';
+  }
+  $('fDate').addEventListener('input', function () { syncDue('bred'); });
+  $('fDate').addEventListener('change', function () { syncDue('bred'); });
+  $('fDue').addEventListener('input', function () { syncDue('due'); });
+  $('fDue').addEventListener('change', function () { syncDue('due'); });
 
   Array.prototype.forEach.call(document.querySelectorAll('[data-day]'), function (c) {
-    c.addEventListener('click', function () { $('fDate').value = toISO(addDays(new Date(), +c.getAttribute('data-day'))); });
+    c.addEventListener('click', function () { $('fDate').value = toISO(addDays(new Date(), +c.getAttribute('data-day'))); syncDue('bred'); });
   });
   $('cancelBtn').addEventListener('click', closeSheet);
 
@@ -1868,7 +2022,7 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
   });
 
   /* ---------- Backup: spreadsheet export and restore ---------- */
-  var CSV_HEAD = ['Type', 'Sow', 'Date', 'Time', 'Boar', 'Heat stage', 'Next heat expected', 'Expected farrowing', 'Litter number', 'Males', 'Females', 'Notes', 'Parasail given', 'Vaccinated', 'Weaned', 'Number weaned', 'Archive'];
+  var CSV_HEAD = ['Type', 'Sow', 'Date', 'Time', 'Boar', 'Heat stage', 'Next heat expected', 'Expected farrowing', 'Litter number', 'Males', 'Females', 'Notes', 'Parasail given', 'Vaccinated', 'Weaned', 'Number weaned', 'Archive', 'Farrowed'];
   function csvCell(v) {
     v = String(v == null ? '' : v);
     return /[",\r\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
@@ -1877,14 +2031,14 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
     if (r.kind === 'litter') {
       // Litters: the dam goes in the Sow column, the sire in the Boar column, the farrowing date in Date
       return ['Litter', r.dam, r.date || '', '', r.sire, '', '', '', r.num, r.males == null ? '' : r.males, r.females == null ? '' : r.females, r.notes || '',
-        taskDone(r, 'parasail'), taskDone(r, 'vacc'), r.weaned || '', r.weanedCount == null ? '' : r.weanedCount, archName];
+        taskDone(r, 'parasail'), taskDone(r, 'vacc'), r.weaned || '', r.weanedCount == null ? '' : r.weanedCount, archName, ''];
     }
     var heat = isHeat(r);
     return [
       heat ? 'Heat' : 'Breeding', r.sow, r.date, heat ? niceTime(r) : '',
       heat ? '' : r.boar, heat ? STAGES[r.type] : '',
       heat && r.type !== 'standing' ? '' : plusDays(r.date, HEAT_DAYS),
-      heat ? '' : plusDays(r.date, FARROW_DAYS), '', '', '', '', '', '', '', '', archName
+      heat ? '' : plusDays(r.date, FARROW_DAYS), '', '', '', '', '', '', '', '', archName, heat ? '' : r.farrowed || ''
     ];
   }
   function buildCSV() {
@@ -1975,6 +2129,7 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
         rec = { sow: sow, type: code, date: date, time: t.time, part: t.part };
       } else if (type === 'breeding') {
         rec = { sow: sow, boar: tidy(get(r, 'Boar')), date: date };
+        if (readDate(get(r, 'Farrowed'))) rec.farrowed = readDate(get(r, 'Farrowed'));
       } else { bad++; return; }
       var pool = everything().concat(data.archived.filter(function (o) { return o.kind !== 'litter'; }));
       if (pool.some(function (o) { return sameEntry(o, rec); })) { skipped++; return; }
@@ -2007,7 +2162,7 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
     }
     outlook().forEach(function (o) {
       var bredNote = o.bred ? 'Bred ' + niceDate(o.bred.date) + ' to ' + o.bred.boar + '.' : 'Not bred. Last heat ' + niceDate(o.lastHeat) + '.';
-      add('heat', o, o.nextHeat, o.sow + ' due back in heat' + (o.bred ? ' (bred to ' + o.bred.boar + ')' : ''), bredNote + ' 21 days after her last heat.');
+      if (!o.farrowedOn) add('heat', o, o.nextHeat, o.sow + ' due back in heat' + (o.bred ? ' (bred to ' + o.bred.boar + ')' : ''), bredNote + ' 21 days after her last heat.');
       if (o.farrow) add('farrow', o, o.farrow, o.sow + ' due to farrow', bredNote + ' 114 days after breeding.');
     });
     openTasks().forEach(function (x) {
@@ -2088,7 +2243,7 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
     var out = [];
     outlook().forEach(function (o) {
       var how = o.bred ? 'Bred to ' + o.bred.boar + ' on ' + shortDate(o.bred.date) : 'Not bred. Last heat ' + shortDate(o.lastHeat);
-      if (daysUntil(o.nextHeat) >= 0) out.push({ date: o.nextHeat, title: o.sow + ' due back in heat', body: how });
+      if (!o.farrowedOn && daysUntil(o.nextHeat) >= 0) out.push({ date: o.nextHeat, title: o.sow + ' due back in heat', body: how });
       if (o.farrow && daysUntil(o.farrow) >= 0) out.push({ date: o.farrow, title: o.sow + ' due to farrow', body: how });
     });
     // Litter jobs: one reminder per litter per day, e.g. "Litter 1: vaccinations and wean"
@@ -2238,7 +2393,7 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
   }
   var shareTimer;
   function shareSoon() { clearTimeout(shareTimer); shareTimer = setTimeout(syncShare, 1500); }
-  function busyEditing() { return !$('sheet').hidden || !$('choice').hidden || !$('litterSheet').hidden || !$('litterView').hidden || !$('taskSheet').hidden || !$('optSheet').hidden || !$('archSheet').hidden; }
+  function busyEditing() { return !$('sheet').hidden || !$('choice').hidden || !$('litterSheet').hidden || !$('litterView').hidden || !$('taskSheet').hidden || !$('optSheet').hidden || !$('archSheet').hidden || !$('farrowSheet').hidden; }
 
   // Take what the service sent and fold it into this phone's copy. Newest change wins.
   function applyShared(records) {
