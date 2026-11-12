@@ -247,9 +247,13 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
 .row.done { opacity: 0.72; }
 .due .colhead { margin: 0 0 -2px; }
 .colhead { margin: 0 0 -8px; padding: 0 16px; color: var(--muted); font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
-.row.line { display: block; min-height: 64px; padding: 14px 16px; font-size: 19px; line-height: 1.35; overflow-wrap: break-word; }
+.row.line { display: block; min-height: 64px; padding: 14px 16px; font-size: 19px; line-height: 1.35; }
+.row.line .main { display: flex; align-items: baseline; gap: 6px; white-space: nowrap; min-width: 0; }
+.row.line .main > * { min-width: 0; overflow: hidden; text-overflow: ellipsis; flex: 0 1 auto; }
+.row.line .main > .sep, .row.line .main > .nw { flex: none; overflow: visible; }
+.row.line small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .row.line b { font-weight: 800; }
-.row.line .sep { color: var(--muted); padding: 0 2px; }
+.row.line .sep { color: var(--muted); }
 .row.line small { display: block; color: var(--muted); font-size: 15px; }
 .row.line .nw { white-space: nowrap; }
 .row.line.late small { color: var(--danger); font-weight: 700; }
@@ -425,7 +429,7 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
     <p class="hint">Makes a calendar file with each sow's expected return to heat and farrowing date, with an alert at 8 AM that day, plus a heads-up 5 days before each.</p>
     <p class="hint" id="fileLink" hidden></p>
   </section>
-  <p class="version" id="version">Version 14.4</p>
+  <p class="version" id="version">Version 14.5</p>
 </div>
 
 <div class="wrap" id="sowView" hidden>
@@ -1048,16 +1052,32 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
     var li = el('li');
     var b = el('button', 'row line' + (cls ? ' ' + cls : ''));
     b.type = 'button';
+    var main = el('span', 'main');   // always one line: the lettering shrinks to fit (see fitLines)
     parts.forEach(function (part, i) {
-      if (i) b.appendChild(el('span', 'sep', ' \u2013 '));
-      var wrap = i === 0 ? el('b') : i === parts.length - 1 ? el('span', 'nw') : null;   // the date at the end stays in one piece
-      if (wrap) { wrap.textContent = part; b.appendChild(wrap); } else b.appendChild(document.createTextNode(part));
+      if (i) main.appendChild(el('span', 'sep', '\u2013'));
+      main.appendChild(el(i === 0 ? 'b' : 'span', i === parts.length - 1 ? 'nw' : 'mid', part));
     });
+    b.appendChild(main);
     if (sub) b.appendChild(el('small', '', sub));
     b.addEventListener('click', onTap);
     li.appendChild(b);
     return li;
   }
+  // Keep each Breeding and Farrowing entry on a single line: make the lettering smaller until it fits.
+  // If a name is so long it still does not fit at the smallest size, it is cut short with "...".
+  function fitLines() {
+    Array.prototype.forEach.call(document.querySelectorAll('.row.line .main'), function (m) {
+      if (!m.clientWidth) return;   // not on screen right now
+      var size = 19;
+      m.style.fontSize = '';
+      function cut() {
+        for (var i = 0; i < m.children.length; i++) if (m.children[i].scrollWidth > m.children[i].clientWidth + 1) return true;
+        return false;
+      }
+      while (cut() && size > 12) { size -= 1; m.style.fontSize = size + 'px'; }
+    });
+  }
+  window.addEventListener('resize', fitLines);
   function dateShort(iso) {
     var d = fromISO(iso);
     return shortDate(iso) + (d.getFullYear() !== new Date().getFullYear() ? ', ' + d.getFullYear() : '');
@@ -1539,6 +1559,7 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
     $('archNone').hidden = all.length > 0;
     $('archSheet').hidden = false;
     $('archSheet').scrollTop = 0;
+    fitLines();
   }
   function openArchive(a) {
     archNow = a;
@@ -1561,6 +1582,7 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
       sorted(items).forEach(function (r) { rows.appendChild(frozenRow(makeRow(r, true, function () {}))); });
     }
     $('archSheet').scrollTop = 0;
+    fitLines();
   }
   $('archBack').addEventListener('click', function () {
     if (archNow) openArchives(); else $('archSheet').hidden = true;
@@ -1808,6 +1830,7 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
     var nJobs = jobsOpen.filter(function (x) { return daysUntil(x.due) <= 3; }).length;
     $('navBadgeV').hidden = !nJobs;
     $('navBadgeV').textContent = nJobs;
+    fitLines();
   }
   searchEl.addEventListener('input', render);
 
