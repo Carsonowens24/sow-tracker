@@ -6,7 +6,7 @@ A phone app for logging sow breedings on a hog operation. It is a web page you a
 
 The app has six screens. Switch between them with the bar at the bottom.
 
-- **Home:** the farm logo, the microphone, and backup and reminder buttons.
+- **Home:** the farm logo and the microphone. The **Options** button at the top opens a side bar with archives, backup, sharing and reminders.
 - **Breeding:** has a switch at the top between **Breedings** and **Farrowing**. Breedings lists every breeding, newest first, each written on one line as Dam – Boar – Date bred, with an **Add breeding** button.
 - **Heat:** every heat record, with an **Add heat** button.
 - **Coming in:** sows due back in heat.
@@ -18,7 +18,7 @@ Archiving a finished season:
 
 - On the **Breeding** (either side of its switch), **Heat** or **Litters** screen, tap **Options**, type a name such as "Fall 2026", and tap **Archive**. Everything on that screen moves into the archive and the screen is empty for the next season.
 - Archived entries no longer count toward Coming in, vaccine jobs or reminders. Litter numbers start again at 1.
-- To look at archives, tap **See archives** at the bottom of Home (or in Options). Open one to see what is in it, rename it, **Bring back** its entries to their screen, or delete it for good.
+- To look at archives, tap **See archives** in the **Options** side bar on Home (or from a screen's Options button). Open one to see what is in it, rename it, **Bring back** its entries to their screen, or delete it for good.
 - Archiving the **Farrowing** side puts those sows away without touching their breedings, which stay on the Breedings side. Sows not yet marked farrowed stop sending farrowing reminders.
 - Archives are included in the spreadsheet export, restore, and sharing between phones.
 
@@ -50,11 +50,11 @@ How to read the colors:
 - **Coming in tab.** Sows due back in heat in the next 3 weeks (so a sow shows up the day she is bred, marked "Bred to" and the boar's name), soonest first. Sows due to farrow are on the Farrowing screen. Overdue ones stay on the list for a week. A bred sow drops off the "due back" list once she is a week past her date with no new heat logged.
 - **Yellow bar.** When you open the app, a yellow bar at the top tells you how many sows are due now or by tomorrow. Tap it to see them. The app cannot send notifications while it is closed.
 - **Edit from the list.** Tap any breeding or heat record in the main list, then choose **Edit** or **See her history**.
-- **Export spreadsheet (CSV).** At the bottom of the main screen. Makes a file with every breeding and heat record that opens in Excel, Numbers or Google Sheets. On an iPhone the Share sheet opens: choose **Save to Files** or **Mail** to send it to yourself.
+- **Export spreadsheet (CSV).** In the **Options** side bar on Home. Makes a file with every breeding and heat record that opens in Excel, Numbers or Google Sheets. On an iPhone the Share sheet opens: choose **Save to Files** or **Mail** to send it to yourself.
 - **Restore from a spreadsheet.** Pick a file you exported earlier and the app adds back any entries that are missing. It never deletes anything, so it is safe to run twice.
 - **Calendar reminders.** Makes a calendar file with each sow's expected return to heat and farrowing date, with an alert at 8 AM that day. Once the events are in your iPhone Calendar, the phone reminds you even when the app is closed. If a sow's dates change later, the old calendar events stay until you delete them in Calendar.
-- **Notifications (optional).** Once the notification service in the `notify` folder is running, a **Turn on notifications** button appears at the bottom of the main screen. You then get a notification at 8 AM on the day a sow is due back in heat or due to farrow, even with the app closed. Only the due dates are sent to the service; sow names and records stay on the phone.
-- **Sharing between phones (optional).** At the bottom of Home, under **Sharing**. Tap **Start sharing from this phone** to get a 12-character share code, then on the other phone enter that code and tap **Join**. Both phones then show the same records. Each phone keeps its own full copy, so the app still works with no signal and catches up when it reconnects. If the same entry is changed on two phones, the most recent change wins. Anyone with the share code can see and change the records, so only give it to people who should have them.
+- **Notifications (optional).** Once the notification service in the `notify` folder is running, a **Turn on notifications** button appears in **Options** on the Home screen. You then get a notification at 8 AM on the day a sow is due back in heat or due to farrow, even with the app closed. Only the due dates are sent to the service; sow names and records stay on the phone.
+- **Sharing between phones (optional).** In the **Options** side bar on Home, under **Sharing**. Tap **Start sharing from this phone** to get a 12-character share code, then on the other phone enter that code and tap **Join**. Both phones then show the same records. Each phone keeps its own full copy, so the app still works with no signal and catches up when it reconnects. If the same entry is changed on two phones, the most recent change wins. Anyone with the share code can see and change the records, so only give it to people who should have them.
 - **What you get notified about.** All at 8 AM: a sow due back in heat (and 5 days before), a sow due to farrow (and 5 days before, as a reminder to put her in a crate), Parasail when a litter is 10 days old, and vaccinations and weaning when a litter is 3 weeks old.
 - **Sow history.** Each sow has her own page, with every breeding and heat record she has and buttons to log another one for her.
 - **Edit or delete.** On the sow's page, tap an entry to change or delete it.
@@ -84,7 +84,7 @@ Open it once while you have a signal. After that it opens in the barn with none.
 
 ## Getting updates
 
-When the app is updated, close it fully (swipe it away) and open it again while you are connected to the internet. The version number at the bottom of the main screen tells you which one you have.
+When the app is updated, close it fully (swipe it away) and open it again while you are connected to the internet. The version number in **Options** on the Home screen tells you which one you have.
 
 ## Good to know
 
