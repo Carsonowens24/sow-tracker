@@ -215,7 +215,17 @@ input[type="text"], input[type="search"], input[type="date"], input[type="time"]
 }
 .drawer.open { transform: none; visibility: visible; transition: transform 0.25s ease; }
 .drawerhead { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.drawerhead h2 { font-size: 24px; }
+.drawerhead { flex-wrap: wrap; }
+.drawerhead h2 { font-size: 26px; order: 3; flex: 0 0 100%; }
+.drawerhead .btn { white-space: nowrap; padding: 0 16px; }
+#drawerClose { margin-left: auto; }
+.menu { display: flex; flex-direction: column; gap: 10px; }
+.menuitem { width: 100%; min-height: 76px; display: flex; align-items: center; gap: 12px; padding: 12px 14px 12px 18px; text-align: left; border-radius: 14px; border: 2px solid var(--line); background: var(--surface); }
+.menuitem .mtext { flex: 1; min-width: 0; }
+.menuitem b { display: block; font-size: 21px; }
+.menuitem small { display: block; color: var(--muted); font-size: 15px; margin-top: 2px; }
+.menuitem .chev { width: 26px; height: 26px; flex: none; fill: none; stroke: var(--muted); stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
+.panel { display: flex; flex-direction: column; gap: 10px; }
 .drawerhead .btn { min-height: 52px; }
 @media (prefers-reduced-motion: reduce) { .drawer, .drawer.open { transition: none; } }
 .tools .hint { margin: 0 0 6px; }
@@ -443,21 +453,34 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
 <div class="scrim" id="scrim" hidden></div>
 <aside class="drawer" id="drawer" aria-label="Options" aria-hidden="true">
   <div class="drawerhead">
-    <h2>Options</h2>
+    <button type="button" class="btn" id="drawerBack" hidden>&lsaquo; Back</button>
+    <h2 id="drawerTitle">Options</h2>
     <button type="button" class="btn" id="drawerClose">Close</button>
   </div>
   <section class="tools" id="tools" aria-label="Options">
-    <h2>Archives</h2>
-    <button type="button" class="btn wide" id="archOpenBtn">See archives</button>
-    <p class="hint" id="archCount">Finished seasons you have put away. To archive, open Breeding, Heat or Litters and tap Options.</p>
-    <h2>Backup</h2>
-    <button type="button" class="btn wide" id="exportBtn">Export spreadsheet (CSV)</button>
-    <p class="hint" id="lastBackup"></p>
-    <button type="button" class="btn wide" id="restoreBtn">Restore from a spreadsheet</button>
-    <input type="file" id="restoreFile" accept=".csv,text/csv,text/comma-separated-values" hidden>
-    <p class="hint">Restore adds any entries from an exported file that are not already here. It never deletes anything.</p>
+    <div class="menu" id="optMenu">
+      <button type="button" class="menuitem" data-panel="archives">
+        <span class="mtext"><b>Archives</b><small id="archCount">Finished seasons you have put away.</small></span><svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>
+      </button>
+      <button type="button" class="menuitem" data-panel="backup">
+        <span class="mtext"><b>Backup</b><small id="menuBackup">Export or restore a spreadsheet.</small></span><svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>
+      </button>
+      <button type="button" class="menuitem" data-panel="sharing">
+        <span class="mtext"><b>Sharing</b><small id="menuSharing">Keep records the same on more than one phone.</small></span><svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>
+      </button>
+      <button type="button" class="menuitem" data-panel="reminders">
+        <span class="mtext"><b>Reminders</b><small id="menuReminders">Notifications and calendar.</small></span><svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>
+      </button>
+    </div>
+    <div class="panel" id="panel-backup" hidden>
+      <button type="button" class="btn wide" id="exportBtn">Export spreadsheet (CSV)</button>
+      <p class="hint" id="lastBackup"></p>
+      <button type="button" class="btn wide" id="restoreBtn">Restore from a spreadsheet</button>
+      <input type="file" id="restoreFile" accept=".csv,text/csv,text/comma-separated-values" hidden>
+      <p class="hint">Restore adds any entries from an exported file that are not already here. It never deletes anything.</p>
+    </div>
+    <div class="panel" id="panel-sharing" hidden>
     <div class="tools-group" id="shareBox" hidden>
-      <h2>Sharing</h2>
       <div class="tools-group" id="shareOff">
         <p class="hint">Keep the same records on more than one phone. Start sharing on one phone, then enter its code on the others.</p>
         <button type="button" class="btn wide go" id="shareStartBtn">Start sharing from this phone</button>
@@ -475,7 +498,8 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
         <button type="button" class="btn wide" id="shareStopBtn">Stop sharing on this phone</button>
       </div>
     </div>
-    <h2>Reminders</h2>
+    </div>
+    <div class="panel" id="panel-reminders" hidden>
     <div class="tools-group" id="pushBox" hidden>
       <button type="button" class="btn wide go" id="pushBtn">Turn on notifications</button>
       <button type="button" class="btn wide" id="pushTestBtn" hidden>Send a test notification</button>
@@ -484,9 +508,10 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
     </div>
     <button type="button" class="btn wide" id="calBtn">Add reminders to Calendar</button>
     <p class="hint">Makes a calendar file with each sow's expected return to heat and farrowing date, with an alert at 8 AM that day, plus a heads-up 5 days before each.</p>
+    </div>
     <p class="hint" id="fileLink" hidden></p>
   </section>
-  <p class="version" id="version">Version 15.2</p>
+  <p class="version" id="version">Version 15.3</p>
 </aside>
 
 <nav class="nav" id="nav" aria-label="Screens">
@@ -1583,7 +1608,7 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
     if (ok && n) { flashSaved(); toast('Archived ' + n + ' as “' + name + '”'); }
   });
   $('optSee').addEventListener('click', function () { $('optSheet').hidden = true; openArchives(); });
-  $('archOpenBtn').addEventListener('click', function () { openArchives(); });
+
 
   // The archive section: a list of archives, then one archive's contents
   var archNow = null, archArmed = false, archArmTimer;
@@ -1794,12 +1819,42 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
   $('swBreed').addEventListener('click', function () { if (tab !== 'breeding') setTab('breeding'); });
   $('swFarrow').addEventListener('click', function () { if (tab !== 'farrow') setTab('farrow'); });
   // Options side bar on Home: archives, backup, sharing and reminders
+  var PANEL_TITLES = { backup: 'Backup', sharing: 'Sharing', reminders: 'Reminders' };
+  function showPanel(name) {
+    $('optMenu').hidden = !!name;
+    Object.keys(PANEL_TITLES).forEach(function (k) { $('panel-' + k).hidden = k !== name; });
+    $('drawerTitle').textContent = name ? PANEL_TITLES[name] : 'Options';
+    $('drawerBack').hidden = !name;
+    $('fileLink').hidden = true;
+    $('drawer').scrollTop = 0;
+    if (name === 'backup') showLastBackup();
+    if (name === 'sharing') showShareState();
+    if (name === 'reminders') showPushState();
+    if (!name) updateMenuNotes();
+  }
+  function updateMenuNotes() {
+    var t = null;
+    try { t = localStorage.getItem(KEY + '.backup'); } catch (e) {}
+    $('menuBackup').textContent = t ? 'Last exported ' + agoText(t).toLowerCase() + '.' : 'Not backed up yet.';
+    $('menuSharing').textContent = share ? 'On. Code ' + prettyCode(share.code) + '.' : 'Off. Keep records the same on more than one phone.';
+    var pushNote = 'Notifications and calendar.';
+    if (pushReady() && Notification.permission === 'granted') pushNote = 'Notifications on. Calendar.';
+    $('menuReminders').textContent = pushNote;
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('.menuitem'), function (b) {
+    b.addEventListener('click', function () {
+      var name = b.getAttribute('data-panel');
+      if (name === 'archives') { openArchives(); return; }
+      showPanel(name);
+    });
+  });
+  $('drawerBack').addEventListener('click', function () { showPanel(''); });
   function openDrawer() {
+    showPanel('');
     $('scrim').hidden = false;
     $('drawer').classList.add('open');
     $('drawer').setAttribute('aria-hidden', 'false');
     $('menuBtn').setAttribute('aria-expanded', 'true');
-    showLastBackup(); showShareState(); showPushState();
     setTimeout(function () { try { $('drawerClose').focus({ preventScroll: true }); } catch (e) {} }, 50);
   }
   function closeDrawer() {
@@ -1811,7 +1866,10 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
   $('menuBtn').addEventListener('click', openDrawer);
   $('drawerClose').addEventListener('click', closeDrawer);
   $('scrim').addEventListener('click', closeDrawer);
-  document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && $('drawer').classList.contains('open')) closeDrawer(); });
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== 'Escape' || !$('drawer').classList.contains('open') || !$('archSheet').hidden) return;
+    if (!$('drawerBack').hidden) showPanel(''); else closeDrawer();
+  });
   $('dueAlert').addEventListener('click', function () { setTab($('dueAlert').getAttribute('data-to') || 'due'); });
 
   function render() {
@@ -1879,8 +1937,8 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
       $('farDoneNone').hidden = fdn.length > 0;
     }
     $('archCount').textContent = data.archives.length
-      ? plural(data.archives.length, 'archive') + ' saved. To archive more, open Breeding, Heat or Litters and tap Options.'
-      : 'Finished seasons you have put away. To archive, open Breeding, Heat or Litters and tap Options.';
+      ? plural(data.archives.length, 'archive') + ' saved.'
+      : 'Finished seasons you have put away.';
     searchEl.placeholder = isLitters || isVacc ? 'Find a litter, sire or dam' : 'Find a sow';
     listEl.hidden = isDue || isHome || isVacc || isFarrow;
     $('vaccView').hidden = !isVacc;
@@ -2660,7 +2718,7 @@ body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
   });
   $('shareSendBtn').addEventListener('click', function () {
     if (!share) return;
-    var text = 'Sow Tracker share code: ' + prettyCode(share.code) + '\nOpen Sow Tracker, tap Options on the Home screen, go to Sharing, and enter this code under "Join".';
+    var text = 'Sow Tracker share code: ' + prettyCode(share.code) + '\nOpen Sow Tracker, tap Options on the Home screen, tap Sharing, and enter this code under "Join".';
     if (navigator.share) { navigator.share({ text: text }).catch(function () {}); return; }
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(text).then(function () { toast('Code copied'); }, function () { toast('Read the code out from the screen'); });

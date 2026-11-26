@@ -6,7 +6,7 @@ A phone app for logging sow breedings on a hog operation. It is a web page you a
 
 The app has six screens. Switch between them with the bar at the bottom.
 
-- **Home:** the farm logo and the microphone. The **Options** button at the top opens a side bar with archives, backup, sharing and reminders.
+- **Home:** the farm logo and the microphone. The **Options** button at the top opens a side bar with four labels: **Archives**, **Backup**, **Sharing** and **Reminders**. Tap a label to open that section, and **Back** to return to the list.
 - **Breeding:** has a switch at the top between **Breedings** and **Farrowing**. Breedings lists every breeding, newest first, each written on one line as Dam – Boar – Date bred, with an **Add breeding** button.
 - **Heat:** every heat record, with an **Add heat** button.
 - **Coming in:** sows due back in heat.
@@ -18,7 +18,7 @@ Archiving a finished season:
 
 - On the **Breeding** (either side of its switch), **Heat** or **Litters** screen, tap **Options**, type a name such as "Fall 2026", and tap **Archive**. Everything on that screen moves into the archive and the screen is empty for the next season.
 - Archived entries no longer count toward Coming in, vaccine jobs or reminders. Litter numbers start again at 1.
-- To look at archives, tap **See archives** in the **Options** side bar on Home (or from a screen's Options button). Open one to see what is in it, rename it, **Bring back** its entries to their screen, or delete it for good.
+- To look at archives, tap **Options** on Home, then **Archives** (or **See archives** from a screen's Options button). Open one to see what is in it, rename it, **Bring back** its entries to their screen, or delete it for good.
 - Archiving the **Farrowing** side puts those sows away without touching their breedings, which stay on the Breedings side. Sows not yet marked farrowed stop sending farrowing reminders.
 - Archives are included in the spreadsheet export, restore, and sharing between phones.
 
